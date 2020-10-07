@@ -3,12 +3,20 @@
 \usepackage[top = 2.5cm, bottom = 2.5cm, left = 2.5cm, right = 2.5cm]{geometry} 
 
 \usepackage[T1]{fontenc}
+\usepackage{hyperref}
 \usepackage[utf8]{inputenc}
-
+\usepackage[noend]{algpseudocode}
+\usepackage{theorem}
+\newtheorem{proposition}{Proposition}
 \usepackage{multirow} 
 \usepackage{booktabs}
 \usepackage{graphicx} 
-
+\usepackage{listings}
+\lstset{language=C++,
+	numbers=none,
+	showspaces=false,
+	showstringspaces=false,
+	basicstyle=\small}
 
 \usepackage{setspace}
 \setlength{\parindent}{0in}
@@ -22,7 +30,7 @@
 \usepackage{mathtools}
 \DeclarePairedDelimiter\ceil{\lceil}{\rceil}
 \DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
-
+\newcommand{\bigO}{\mathcal{O}}
 \lhead{\footnotesize The Sieve of Eratosthenes}
 \rhead{\footnotesize Michael Markl} 
 
@@ -59,12 +67,42 @@ Given the number $n$ the procedure starts with a list of the numbers from $2$ to
 Start with $2$ and cross out all larger multiples of $2$.
 Then continue with the next number which is not crossed out  -- in the second iteration the number $3$ -- and cross out all larger multiples of it.
 Repeat this until you have worked through the whole list.
-Then all numbers that are not crossed out in the end are primes.
+	Then all numbers that are not crossed out in the end are primes.
 
-For the primality test of $n$ it even suffices to iterate this procedure until the number~$\floor{\sqrt{n}}$: If we assume, that $n$ is not a prime number, we find numbers $a,b\in\{2, \dots, n\}$ with $n=a\cdot b$.
-If $a$ or $b$ is smaller than or equal to $\floor{\sqrt{n}}$ then $n$ would be crossed out after reaching $\floor{\sqrt{n}}$.
-Otherwise, $a$ and $b$ are strictly larger than $\floor{\sqrt{n}}$ which implies that $a$ and $b$ are strictly larger than $\sqrt{n}$ and hence $a\cdot b > \sqrt{n}^2 = n$ forms a contradiction.
+For generating all prime numbers up to $n$ it even suffices to iterate this procedure until the number~$\floor{\sqrt{n}}$: If we assume, that $x\leq n$ is not a prime number, we find numbers $a,b\in\{2, \dots, x\}$ with $x=a\cdot b$.
+If $a$ or $b$ is smaller than or equal to $\floor{\sqrt{n}}$ then $x$ would be crossed out after reaching $\floor{\sqrt{n}}$.
+Otherwise, $a$ and $b$ are strictly larger than $\floor{\sqrt{n}}$ which implies that $a$ and $b$ are strictly larger than $\sqrt{n}$ and hence $x = a\cdot b > \sqrt{n}^2 = n \geq x$ forms a contradiction.
 
+Even faster: Once we choose to erase all larger multiples of some number, we can choose to start with its square, as all other multiples -- if existent -- have already been taken care of when crossing out multiples of smaller numbers.
 
+This very simple algorithm is implemented in~\autoref{prg:sync_sieve} in the programming language C++.
+
+\begin{proposition}
+	The synchronous implementation in~\autoref{prg:sync_sieve} has running time $\bigO()$.
+\end{proposition}
+
+\appendix
+\section{Appendix}
+ 	\begin{lstlisting}[caption={Synchronous implementation of the Sieve of Eratosthenes}, label={prg:sync_sieve}, frame={single}]
+#include <cmath>
+	
+bool isPrime(unsigned int n) {
+  bool *list = new bool[n - 1]();
+  // list[i] == false means i+2 is not crossed out.
+  // new bool[n-1]() automatically initializes the array with false.
+  double maxIter = sqrt(n) - 2;
+  for (int i = 0; i <= maxIter; i++) {
+    if (list[i] == 0) { // cross out all larger multiples of i+2
+      for (int j = (i + 2) * (i + 2) - 2; j < n; j += (i + 2)) {
+        list[j] = true;
+      }
+    }
+  }
+  bool result = !list[n - 2];
+  delete [] list;
+  return result;
+}
+	\end{lstlisting}
+	
 
 \end{document}
