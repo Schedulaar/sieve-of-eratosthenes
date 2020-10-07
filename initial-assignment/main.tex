@@ -1,0 +1,70 @@
+
+\documentclass[a4paper,12pt]{article} 
+\usepackage[top = 2.5cm, bottom = 2.5cm, left = 2.5cm, right = 2.5cm]{geometry} 
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{multirow} 
+\usepackage{booktabs}
+\usepackage{graphicx} 
+
+
+\usepackage{setspace}
+\setlength{\parindent}{0in}
+
+\usepackage{float}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+
+\usepackage{mathtools}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+\lhead{\footnotesize The Sieve of Eratosthenes}
+\rhead{\footnotesize Michael Markl} 
+
+
+\cfoot{\footnotesize \thepage} 
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\begin{tabular}{p{15.5cm}} %
+{\large \bf Parallel Algorithms} \\
+University of Utrecht \\ Fall 2020  \\ Rob H. Bisseling\\
+\hline
+\\
+\end{tabular}
+
+\vspace*{0.3cm}
+\begin{center}
+	{\Large \bf The Sieve of Eratosthenes}
+	\vspace{2mm}
+	
+	{\bf Michael Markl}
+\end{center}  
+\vspace{0.4cm}
+
+Prime numbers play a central role for example in modern encryption algorithms.
+Most encryption algorithms need prime numbers with about 1,000 digits as a secret key.
+Hence, many algorithms chose some number randomly and then check with so-called primality tests, whether this number is a prime number and therefore suitable for using as an encryption key.
+
+One such primality test, which was already invented by the ancient greeks, is called the Sieve of Eratosthenes.
+This algorithm not only checks for a given number whether it is prime, but it even finds all prime numbers up to that number.
+Given the number $n$ the procedure starts with a list of the numbers from $2$ to $n$.
+Start with $2$ and cross out all larger multiples of $2$.
+Then continue with the next number which is not crossed out  -- in the second iteration the number $3$ -- and cross out all larger multiples of it.
+Repeat this until you have worked through the whole list.
+Then all numbers that are not crossed out in the end are primes.
+
+For the primality test of $n$ it even suffices to iterate this procedure until the number~$\floor{\sqrt{n}}$: If we assume, that $n$ is not a prime number, we find numbers $a,b\in\{2, \dots, n\}$ with $n=a\cdot b$.
+If $a$ or $b$ is smaller than or equal to $\floor{\sqrt{n}}$ then $n$ would be crossed out after reaching $\floor{\sqrt{n}}$.
+Otherwise, $a$ and $b$ are strictly larger than $\floor{\sqrt{n}}$ which implies that $a$ and $b$ are strictly larger than $\sqrt{n}$ and hence $a\cdot b > \sqrt{n}^2 = n$ forms a contradiction.
+
+
+
+\end{document}
