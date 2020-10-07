@@ -1,7 +1,5 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <malloc.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
 
 bool isPrime(unsigned int n) {
     bool * list = new bool [n]; // list[i] == false means i+2 is not crossed out.
