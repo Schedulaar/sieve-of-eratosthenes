@@ -4,7 +4,7 @@
 #include <math.h>
 
 bool isPrime(unsigned int n) {
-    bool *list = calloc(n, sizeof(bool)); // list[i] == false means i+2 is not crossed out.
+    bool * list = new bool [n]; // list[i] == false means i+2 is not crossed out.
     // calloc automatically initializes the array with false.
     double maxIter = sqrt(n) - 2;
     for (int i = 0; i <= maxIter; i++) {
@@ -14,7 +14,7 @@ bool isPrime(unsigned int n) {
             }
         }
     }
-    bool result = list[n - 2] == false;
+    bool result = !list[n - 2];
     free(list);
     return result;
 }
