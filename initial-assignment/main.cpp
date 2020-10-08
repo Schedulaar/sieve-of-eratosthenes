@@ -26,7 +26,7 @@ bool isPrime(unsigned int n) {
 
 
 int main() {
-  isPrime(100000000);
+  isPrime(1000000000);
 
   printf("Type in some number to check for primality!\n");
   unsigned int n;

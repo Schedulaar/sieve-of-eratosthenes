@@ -1,7 +1,8 @@
 #include <bsp.hpp>
 #include <cstdio>
 #include <cmath>
-#include <unistd.h>
+
+bool PRINT_PRIMES = false;
 
 long P; // number of processors requested
 long n;
@@ -12,45 +13,49 @@ void bspsieve_coord() {
 
   long p = bsp_nprocs(); // p = number of processors
   long s = bsp_pid();    // s = processor number
+  long globalArrayLength = (n - 1) / 2;
 
-  long arrayLength = (long) ceil(((double) (n - 1)) / p);
-  long blockStart = s*arrayLength + 2;
+  long arrayLength = (long) ceil(((double) globalArrayLength) / p);
+  long blockStart = 2 * s * arrayLength + 3;
 
   bool *list = new bool[arrayLength]();
-  long currPrimeAndCoord [2] = {2, 0};
+  long currPrimeAndCoord[2] = {3, 0};
   long lastCoordinator = 0;
-  bsp_push_reg(currPrimeAndCoord, 2*sizeof(long));
+  bsp_push_reg(currPrimeAndCoord, 2 * sizeof(long));
   bsp_sync();
 
   double maxSievePrime = sqrt(n);
 
-  while(currPrimeAndCoord[0] < maxSievePrime) {
+  while (currPrimeAndCoord[0] <= maxSievePrime) {
     // Sieve, if the coordinator didn't change.
     if (lastCoordinator == currPrimeAndCoord[1]) {
-      long p = currPrimeAndCoord[0];
-      long j = p * p - blockStart;
+      long q = currPrimeAndCoord[0];
+      long j = (q * q - blockStart) / 2;
       if (j < 0) {
-        j = p - blockStart % p;
+        long mod = blockStart % q;
+        if (mod == 0) j = 0;
+        else if (mod % 2 == 1) j = (q - mod) / 2;
+        else j = (2*q - mod) / 2;
       }
       while (j < arrayLength) {
         list[j] = true;
-        j += p;
+        j += q;
       }
     }
 
-    // Change current prime or coordinator
+    // Let coordinator change current prime or coordinator
     if (s == currPrimeAndCoord[1]) {
       // Search for the next prime to sieve
-      long j = currPrimeAndCoord[0] - blockStart + (lastCoordinator == currPrimeAndCoord[1]);
-      while(j < arrayLength && list[j]) j++;
-      currPrimeAndCoord[0] = blockStart + j;
+      long j = (currPrimeAndCoord[0] - blockStart) / 2 + (lastCoordinator == currPrimeAndCoord[1]);
+      while (j < arrayLength && list[j]) j++;
+      currPrimeAndCoord[0] = blockStart + j * 2;
 
       lastCoordinator = currPrimeAndCoord[1];
       currPrimeAndCoord[1] = j < arrayLength ? s : s + 1;
 
-      long k = s+1;
+      long k = s + 1;
       while (k < p) {
-        bsp_put(k, currPrimeAndCoord, currPrimeAndCoord, 0, 2*sizeof(long));
+        bsp_put(k, currPrimeAndCoord, currPrimeAndCoord, 0, 2 * sizeof(long));
         k++;
       }
       bsp_sync();
@@ -64,12 +69,16 @@ void bspsieve_coord() {
   if (s == 0)
     printf("coord needed %fs. \n", time1 - time0);
 
-  /*for (long i = 0; i < n-1; i++) {
-    if (i / arrayLength == s && !list[i % arrayLength]) {
-      printf("%li is prime on proc %li.\n", i + 2, s);
+  if (PRINT_PRIMES) {
+    if (s == 0)
+      printf("2 is prime by definition.\n");
+    for (long i = 0; i < (n - 1) / 2; i++) {
+      if (i / arrayLength == s && !list[i % arrayLength]) {
+        printf("%li is prime on proc %li.\n", 2 * i + 3, s);
+      }
+      bsp_sync();
     }
-    bsp_sync();
-  }*/
+  }
 
   bsp_pop_reg(currPrimeAndCoord);
   delete [] list;
@@ -81,13 +90,12 @@ int main(int argc, char **argv) {
   fflush(stdout);
   scanf("%ld", &P);
   if (P > bsp_nprocs()) {
-    printf("Sorry, only %u processors available.\n",
-           bsp_nprocs());
+    printf("Sorry, only %u processors available.\n", bsp_nprocs());
     fflush(stdout);
     exit(EXIT_FAILURE);
   }
 
-  n = 10000000;
+  n = 1000000000;
 
   bsp_init(bspsieve_coord, argc, argv);
   bspsieve_coord();
