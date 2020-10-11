@@ -1,11 +1,15 @@
 #include <bsp.hpp>
 #include <cstdio>
 #include <cmath>
+#include <cstring>
 
 bool PRINT_PRIMES = false;
+bool COUNT_PRIMES = false;
 
 long P; // number of processors requested
 long n;
+double timeTaken;
+long totalNumberPrimes;
 
 void bspsieve_coord() {
   bsp_begin(P);
@@ -63,8 +67,10 @@ void bspsieve_coord() {
   }
 
   double time1 = bsp_time();
-  if (s == 0)
-    printf("coord needed %fs. \n", time1 - time0);
+  if (s == 0) {
+    timeTaken = time1 - time0;
+    printf("coord needed %fs. \n", timeTaken);
+  }
 
   if (PRINT_PRIMES) {
     for (long i = 0; i < n - 1; i++) {
@@ -138,9 +144,33 @@ void bspsieve_coord_ignore_even() {
     }
   }
 
+  bsp_pop_reg(currPrimeAndCoord);
+
   double time1 = bsp_time();
-  if (s == 0)
-    printf("coord needed %fs. \n", time1 - time0);
+  if (s == 0) {
+    timeTaken = time1 - time0;
+  }
+
+  if (COUNT_PRIMES) {
+    long numberPrimes[p];
+    memset(numberPrimes, 0, sizeof(numberPrimes));
+    bsp_push_reg(numberPrimes, p * sizeof(long));
+    bsp_sync();
+
+    for (long i = 0; i < arrayLength && blockStart + 2 * i <= n; i++) {
+      numberPrimes[s] += (list[i] == 0);
+    }
+    bsp_put(0, &numberPrimes[s], numberPrimes, s * sizeof(long), sizeof(long));
+    bsp_sync();
+
+    if (s == 0) {
+      totalNumberPrimes = 1;
+      for (long j = 0; j < p; j++) {
+        totalNumberPrimes += numberPrimes[j];
+      }
+    }
+    bsp_pop_reg(numberPrimes);
+  }
 
   if (PRINT_PRIMES) {
     if (s == 0)
@@ -152,14 +182,30 @@ void bspsieve_coord_ignore_even() {
       bsp_sync();
     }
   }
-
-  bsp_pop_reg(currPrimeAndCoord);
-  delete [] list;
+  delete[] list;
   bsp_end();
 }
 
 int main(int argc, char **argv) {
-  printf("How many processors do you want to use?\n");
+  long NITERS = 100;
+  long maxP = bsp_nprocs();
+  for (n = 10; n <= 10e8; n*= 10) {
+    printf("----------------------\n");
+    printf("       n=%li\n", n);
+    printf("----------------------\n");
+    for (P = 1; P <= maxP; P = (2*P <= maxP || P == maxP) ? 2*P : maxP ) {
+      double averageTime = 0;
+      for (int i = 0; i < NITERS; i++) {
+        bsp_init(bspsieve_coord_ignore_even, argc, argv);
+        bspsieve_coord_ignore_even();
+        averageTime += timeTaken;
+      }
+      printf("p=%li: t=%f\n", P, averageTime / NITERS);
+    }
+  }
+  return 0;
+
+  /*printf("How many processors do you want to use?\n");
   fflush(stdout);
   scanf("%ld", &P);
   if (P > bsp_nprocs()) {
@@ -170,7 +216,7 @@ int main(int argc, char **argv) {
 
   n = 1000000000;
 
-  bsp_init(bspsieve_coord, argc, argv);
-  bspsieve_coord();
-  exit(EXIT_SUCCESS);
+  bsp_init(bspsieve_coord_ignore_even, argc, argv);
+  bspsieve_coord_ignore_even();
+  exit(EXIT_SUCCESS);*/
 }
