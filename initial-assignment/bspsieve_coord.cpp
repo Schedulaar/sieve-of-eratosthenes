@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
         bsp_init(bspsieve_coord_ignore_even, argc, argv);
         bspsieve_coord_ignore_even();
         averageTime += timeTaken;
-        printf("  { \"p\": %li, \"t\": %f, \"iter\": %i },\n", P, timeTaken, i);
+        printf("  { \"p\": %li, \"n\": %li, \"t\": %f, \"iter\": %i },\n", P, n, timeTaken, i);
       }
     }
   }
