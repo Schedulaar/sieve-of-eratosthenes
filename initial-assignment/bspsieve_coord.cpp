@@ -132,10 +132,8 @@ void bspsieve_coord_ignore_even() {
       lastCoordinator = currPrimeAndCoord[1];
       currPrimeAndCoord[1] = j < arrayLength ? s : s + 1;
 
-      long k = s + 1;
-      while (k < p) {
+      for (long k = 0; k < p; k++) {
         bsp_put(k, currPrimeAndCoord, currPrimeAndCoord, 0, 2 * sizeof(long));
-        k++;
       }
       bsp_sync();
     } else {
