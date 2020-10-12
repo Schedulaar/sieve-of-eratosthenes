@@ -122,6 +122,7 @@ void bspsieve_coord_ignore_even() {
         j += q;
       }
     }
+    bsp_sync(); // For matching BSP pattern
 
     // Let coordinator change current prime or coordinator
     if (s == currPrimeAndCoord[1]) {
@@ -144,7 +145,6 @@ void bspsieve_coord_ignore_even() {
   }
 
   bsp_pop_reg(currPrimeAndCoord);
-
   std::vector<long> primes;
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
   for (long k = 0; k < arrayLength; k++) {
@@ -207,20 +207,19 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+  printf("[\n");
   for (n = minN; n <= maxN; n *= 10) {
-    printf("----------------------\n");
-    printf("       n=%li\n", n);
-    printf("----------------------\n");
     for (P = minP; P <= maxP; P = (2*P <= maxP || P == maxP) ? 2*P : maxP ) {
       double averageTime = 0;
       for (int i = 0; i < nIters; i++) {
         bsp_init(bspsieve_coord_ignore_even, argc, argv);
         bspsieve_coord_ignore_even();
         averageTime += timeTaken;
+        printf("  { \"p\": %li, \"t\": %f, \"iter\": %i },\n", P, timeTaken, i);
       }
-      printf("p=%li: t=%f\n", P, averageTime / nIters);
     }
   }
+  printf("]\n");
   return 0;
 
 
