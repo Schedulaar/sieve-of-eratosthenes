@@ -334,7 +334,7 @@ In a first step, every processor initialises variables holding the current prime
 		\State
 		\State{\{ Broadcast new information \}}\Comment{Superstep ($3_k$)}
 		\If {$s = \lastCoord$}
-		\For {$j := s+1 ~ \mathbf{to}~ p$}
+		\For {$j := 0 ~ \mathbf{to}~ p-1$}
 		\State {Put $\currPrime$ to $P(j);$}
 		\State {Put $\currCoord$ to $P(j);$}
 		\EndFor
