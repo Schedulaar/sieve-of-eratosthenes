@@ -185,8 +185,17 @@ void bspsieve_coord_ignore_even() {
 }
 
 int main(int argc, char **argv) {
-  long NITERS = 100;
+  printf("How many processors do you want to use at max?\n");
+  fflush(stdout);
   long maxP = bsp_nprocs();
+  scanf("%ld", &maxP);
+  if (P > bsp_nprocs()) {
+    printf("Sorry, only %u processors available.\n", bsp_nprocs());
+    fflush(stdout);
+    exit(EXIT_FAILURE);
+  }
+
+  long NITERS = 100;
   for (n = 10; n <= 10e8; n*= 10) {
     printf("----------------------\n");
     printf("       n=%li\n", n);
@@ -203,15 +212,8 @@ int main(int argc, char **argv) {
   }
   return 0;
 
-  /*printf("How many processors do you want to use?\n");
-  fflush(stdout);
-  scanf("%ld", &P);
-  if (P > bsp_nprocs()) {
-    printf("Sorry, only %u processors available.\n", bsp_nprocs());
-    fflush(stdout);
-    exit(EXIT_FAILURE);
-  }
 
+/*
   n = 1000000000;
 
   bsp_init(bspsieve_coord_ignore_even, argc, argv);
