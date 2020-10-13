@@ -6,6 +6,7 @@
 
 int PRINT_PRIMES = 0;
 bool COUNT_PRIMES = false;
+bool GENERATE_TWINS = false;
 
 long P; // number of processors requested
 long n;
@@ -115,6 +116,35 @@ void sieve_optimized(long prime, bool * crosses,
   }
 }
 
+/* Returns list of twins represented by their mean */
+std::vector<long> bsp_twins(std::vector<long> primes) {
+  long p = bsp_nprocs(), s = bsp_pid();
+  // Get largest prime of previous processor
+  long prevPrime = s == 0 ? 2 : 0;
+  bsp_push_reg(&prevPrime, sizeof(long));
+  bsp_sync();
+
+  if (s < p - 1 && primes.size() > 0)
+    bsp_put(s + 1, &primes[primes.size() - 1],
+            &prevPrime, 0, sizeof(long));
+  bsp_sync();
+
+  std::vector<long> twins;
+  if (primes.size() == 0)
+    return twins;
+
+  if (prevPrime + 2 == primes[0])
+    twins.push_back(prevPrime + 1);
+  for (long i = 0; i < primes.size() - 1; i++) {
+    if (primes[i] + 2 == primes[i + 1])
+      twins.push_back(primes[i] + 1);
+  }
+
+  bsp_pop_reg(&prevPrime);
+  bsp_sync();
+  return twins;
+}
+
 void bsp_sieve_optimized() {
   bsp_begin(P);
   double time0 = bsp_time();
@@ -165,8 +195,8 @@ void bsp_sieve_optimized() {
   std::vector<long> primes;
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
   for (long j = 0; j < arrayLength; j++) {
-    if (!crosses[j] && blockStart+2*j <= n) // We might have few numbers >n
-      primes.push_back(blockStart+2*j);
+    if (!crosses[j] && blockStart + 2 * j <= n) // We might have few numbers >n
+      primes.push_back(blockStart + 2 * j);
   }
   delete[] crosses;
   bsp_pop_reg(&currPrime);
@@ -177,6 +207,19 @@ void bsp_sieve_optimized() {
   if (s == 0) {
     timeTaken = time1 - time0;
   }
+
+  if (GENERATE_TWINS) {
+    std::vector<long> twins = bsp_twins(primes);
+    for (long k = 0; k < p; k++) {
+      if (s == k) {
+        for (long i = 0; i < twins.size(); i++)
+          printf("%li±1 is twin-prime on proc %li.\n", twins[i], s);
+      }
+      bsp_sync();
+    }
+    twins.clear();
+  }
+
 
   if (COUNT_PRIMES) {
     long numberPrimes[p];
