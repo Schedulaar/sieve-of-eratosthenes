@@ -15,7 +15,7 @@ std::vector<long> sieve(long n) {
     if (!crosses[i]) { // cross out all larger multiples of i+2
       for (int j = (i+2)*(i+2) - 2; j < n - 1; j += (i+2)) {
         crosses[j] = true;
-        numberOps += 5;
+        numberOps += 3;
       }
     }
     numberOps += 3;
@@ -39,8 +39,9 @@ int main() {
   for (long n = 2; n <= 10e10; n *= 2) {
     std::vector<long> primes = sieve(n);
     double differenceQuotient = ((double) numberOps - lastOps) / (n - lastN);
-    printf("(%f,%f)\n", ((double) n) / 2 + 0.001, numberOps, differenceQuotient);
-    printf("(%li,%f)\n", n, numberOps, differenceQuotient);
+    //printf("(%f,%f)\n", ((double) n) / 2 + 0.001, differenceQuotient);
+    //printf("(%li,%f)\n", n, differenceQuotient);
+    printf("(%li,%li)\n", n, numberOps);
     primes.clear();
     numberOps = 0;
   }
