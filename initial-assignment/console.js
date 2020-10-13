@@ -30,3 +30,15 @@ const latexData = objectMap(meanAndDeviationObj2, pdata => {
 `, '')
   return { means, relDeviations }
 })
+
+const means = Object.values(latexData).reduce((acc, val) => acc + `
+
+\\addplot coordinates {
+${val.means}
+};`, '')
+
+const relDeviations = Object.values(latexData).reduce((acc, val) => acc + `
+
+\\addplot coordinates {
+${val.relDeviations}
+};`, '')
