@@ -562,7 +562,40 @@ void sieve_optimized(long prime, bool * crosses,
   }
 }
 	\end{lstlisting}
-	
+
+	\begin{lstlisting}[caption={Extension function for finding prime twins}, label={prg:par_opt_sieve}, frame={single}]
+#include <bsp.hpp>
+#include <vector>
+
+/* Returns list of twins represented by their mean */
+std::vector<long> bsp_twins(std::vector<long> primes) {
+  long p = bsp_nprocs(), s = bsp_pid();
+  // Get largest prime of previous processor
+  long prevPrime = s == 0 ? 2 : 0;
+  bsp_push_reg(&prevPrime, sizeof(long));
+  bsp_sync();
+
+  if (s < p - 1 && primes.size() > 0)
+    bsp_put(s + 1, &primes[primes.size() - 1],
+            &prevPrime, 0, sizeof(long));
+  bsp_sync();
+
+  std::vector<long> twins;
+  if (primes.size() == 0)
+    return twins;
+
+  if (prevPrime + 2 == primes[0])
+    twins.push_back(prevPrime + 1);
+  for (long i = 0; i < primes.size() - 1; i++) {
+    if (primes[i] + 2 == primes[i + 1])
+      twins.push_back(primes[i] + 1);
+  }
+
+  bsp_pop_reg(&prevPrime);
+  bsp_sync();
+  return twins;
+}
+	\end{lstlisting}
 	
 	
 
