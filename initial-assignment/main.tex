@@ -396,14 +396,37 @@ Hence the overall estimate of the BSP cost accumulates to
 One might consider optimizing the algorithm for a speed improvement:
 If we let each processor compute the primes up to $\sqrt{n}$ themselves, we could abandon all communication altogether, but this comes with the expense of an additional memory requirement, hence this improvement was not applied here.
 
-Putting this algorithm into an actual parallel program, most efforts went into getting the local indices of the $\crosses$ array right.
-The parallel program is implemented in two different ways.
+For putting this algorithm into an actual parallel program most efforts went into getting the local indices of the $\crosses$ array right.
+The parallel program is implemented in two different ways:
 In the first attempt, the program was implemented exactly like the algorithm suggests.
 As an optimization, we save half of the space for the $\crosses$ array by ignoring all even numbers, because we know, that $2$ is the only even prime number.
 Although ignoring even numbers makes local index computation slightly harder, it does not only save on memory, but as we will see also improves the running time.
-The resulting program can be seen in~\autoref{prg:par_opt_sieve}.
+The resulting optimized program can be seen in~\autoref{prg:par_opt_sieve}.
 
+Now, let us analyse how the program performs with up to 16 processors.
+This benchmark has been made both for the optimized and for unoptimized program.
+The results can be seen in\todo{ösdylkfjlsa dök fkjlalkjs dföa dlkj}.
+Each value in this figure is the mean running time of 100~iterations to minimize short-term disturbances.
 
+\begin{figure}
+		\begin{tikzpicture}
+		\begin{loglogaxis}[
+		scale only axis,
+		width=0.8\textwidth,
+		xmin=1,
+		ymin=1,
+		log basis x=10,
+		log basis y=10,
+		height=4cm,
+		xlabel=$n$, 
+		ylabel=Time in $s$,
+		grid=major]
+		\addplot[only marks, mark=+] coordinates {
+			
+		};
+		\end{loglogaxis}
+		\end{tikzpicture}
+\end{figure}
 
 
 \pagebreak
@@ -521,11 +544,11 @@ void bsp_sieve_optimized() {
 
 void sieve_optimized(long prime, bool * crosses,
                      long blockStart, long arrayLength) {
-  // Search for first multiple of currPrime in local array
-  // Start with currPrime^2 and check if it is prior to the local array
+  // Search for first multiple of prime in local array
+  // Start with prime^2 and check if it is prior to the local array
   long j = (prime*prime - blockStart) / 2;
   if (j < 0) {
-    // If so, take the first multiple of currPrime in local array:
+    // If so, take the first multiple of prime in local array:
     long mod = blockStart % prime;
     // If the remainder `mod` is ...
     if (mod == 0) j = 0;// zero, j=0 represents the first multiple

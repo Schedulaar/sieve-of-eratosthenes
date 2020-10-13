@@ -97,11 +97,11 @@ void bsp_sieve() {
 
 void sieve_optimized(long prime, bool * crosses,
                      long blockStart, long arrayLength) {
-  // Search for first multiple of currPrime in local array
-  // Start with currPrime^2 and check if it is prior to the local array
+  // Search for first multiple of prime in local array
+  // Start with prime^2 and check if it is prior to the local array
   long j = (prime*prime - blockStart) / 2;
   if (j < 0) {
-    // If so, take the first multiple of currPrime in local array:
+    // If so, take the first multiple of prime in local array:
     long mod = blockStart % prime;
     // If the remainder `mod` is ...
     if (mod == 0) j = 0;// zero, j=0 represents the first multiple
