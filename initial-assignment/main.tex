@@ -377,6 +377,34 @@ In superstep ($2_k$) the coordinator broadcasts this newly gained information to
 Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
 Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
 
+Let us now estimate the BSP cost of this algorithm:
+For that, $l$ denotes the latency for synchronization and $g$ denotes the gap between sending successive data words.
+Superstep ($0$) costs about $n/p$ for initializing the $\crosses$ array.
+The sieving loop of Superstep ($1_k$) is executed once for every prime in $2,\dots,\floor{\sqrt{n}}$.
+Similarly to the proof of~\autoref{prop:seq_sieve} we get a cost bound of $4\cdot n/p \cdot \ln(\ln(n))$, where we bound the comparisons and index calculations per loop iteration by 4.
+As changing the coordinator does practically not occur for large $n$, we ignore the second part of superstep ($1_k$).
+Superstep ($2_k$) now involves a communication in a $2(p-1)$-relation.
+As the number of primes smaller than or equal to $n$ is approximately $n/\ln n$, this introduces a cost smaller than $2p\cdot n/\ln n\cdot g$.
+Also total number of occurences of supersteps ($1_k$) and ($2_k$) is approximately  $n/\ln n$ introducing a communication cost of $n/\ln n \cdot l$.
+The last superstep accumulates all primes in a list which takes every processor only $n/p$ operations.
+The synchronization of supersteps ($0$) and ($3$) can be neglected.
+Hence the overall estimate of the BSP cost accumulates to
+\[
+	\frac{2n + 4n \ln \ln n}{p} + \frac{2p n}{\ln n}g + \frac{n}{\ln n} l.
+\]
+
+One might consider optimizing the algorithm for a speed improvement:
+If we let each processor compute the primes up to $\sqrt{n}$ themselves, we could abandon all communication altogether, but this comes with the expense of an additional memory requirement, hence this improvement was not applied here.
+
+Putting this algorithm into an actual parallel program, most efforts went into getting the local indices of the $\crosses$ array right.
+The parallel program is implemented in two different ways.
+In the first attempt, the program was implemented exactly like the algorithm suggests.
+As an optimization, we save half of the space for the $\crosses$ array by ignoring all even numbers, because we know, that $2$ is the only even prime number.
+Although ignoring even numbers makes local index computation slightly harder, it does not only save on memory, but as we will see also improves the running time.
+The resulting program can be seen in~\autoref{prg:par_opt_sieve}.
+
+
+
 
 \pagebreak
 \appendix
