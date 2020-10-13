@@ -21,7 +21,7 @@
 	numbers=none,
 	showspaces=false,
 	showstringspaces=false,
-	basicstyle=\small}
+	basicstyle=\footnotesize}
 
 \usepackage{setspace}
 \setlength{\parindent}{0in}
@@ -290,8 +290,21 @@ As we only have to process numbers up to $\sqrt{n}$, a change in coordination re
 Nevertheless, we will take care of this in the algorithm.
 
 Bringing all this knowledge into shape yields~\autoref{alg:parallel_sieve}.
-In a first step, every processor initialises variables holding the current prime number, the processor id of the current coordinator and a list of boolean values.
-\todo{Add bla}
+In a first step, every processor initialises variables holding the current prime number, the processor id of the current coordinator and an array of boolean values for indices from 2 up to $n$ distributed in blocks.
+As in~\autoref{prg:seq_sieve} this list saves for a specific number whether it has been crossed out already.
+
+Now we iterate as long as the current prime is greater than $\sqrt{n}$ and undertake the following two supersteps:
+In Superstep ($1_k$) each processor crosses out all larger multiples of the current prime, if the coordinator has not changed since the last iteration.
+This is necessary, to be sure that the variable for currentPrime actually holds a prime number and to avoid unnecessary work.
+In turn, the coordinator searches for the next prime.
+If his search is not successful, it means, that the next prime is to be expected in the block of the next processor.
+In that case, he transfers the responsibility for the coordination to the next processor.
+In superstep ($2_k$) the coordinator broadcasts this newly gained information to all other processors.
+ 
+Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
+Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
+
+
 
 \renewcommand{\algorithmicrequire}{\textit{input:}\ \  }
 \renewcommand{\algorithmicensure}{\textit{output:}}
@@ -318,9 +331,7 @@ In a first step, every processor initialises variables holding the current prime
 		\EndFor
 		\EndIf
 		
-		\State
-		
-		\State{\{ Search for next prime or transfer coordination \} }\Comment{Superstep ($2_k$)}
+		\State{\{ Search for next prime or transfer coordination \} }
 		\State {$\lastCoord := \currCoord;$}
 		\If {$s = \currCoord$}
 		\State {\{ Search for next prime \}}
@@ -332,7 +343,7 @@ In a first step, every processor initialises variables holding the current prime
 		\EndIf
 		
 		\State
-		\State{\{ Broadcast new information \}}\Comment{Superstep ($3_k$)}
+		\State{\{ Broadcast new information \}}\Comment{Superstep ($2_k$)}
 		\If {$s = \lastCoord$}
 		\For {$j := 0 ~ \mathbf{to}~ p-1$}
 		\State {Put $\currPrime$ to $P(j);$}
@@ -341,7 +352,7 @@ In a first step, every processor initialises variables holding the current prime
 		\EndIf
 		\EndWhile
 		\State
-		\State{\{ Accumulate primes in lists \}}\Comment{Superstep ($4$)}
+		\State{\{ Accumulate primes in lists \}}\Comment{Superstep ($3$)}
 		\State {$l_s := $ empty list}
 		\For {$i\in \mathbf{b}_s$ with $\crosses[i] = \mathbf{false}$}
 		\State {Append $i$ to $l_s;$}
@@ -350,32 +361,139 @@ In a first step, every processor initialises variables holding the current prime
 \end{algorithm}
 
 
-
+\pagebreak
 \appendix
 \section{Appendix}
-\begin{minipage}{\linewidth}
+
  	\begin{lstlisting}[caption={Sequential implementation of the Sieve of Eratosthenes}, label={prg:seq_sieve}, frame={single}]
+#include <cstdio>
 #include <cmath>
-	
-bool isPrime(unsigned int n) {
-  bool *list = new bool[n - 1]();
-  // list[i] == false means i+2 is not crossed out.
+#include <vector>
+
+long numberOps = 0;
+
+std::vector<long> sieve(long n) {
+  bool *crosses = new bool[n - 1]();
+  // list[i] == true means i+2 is crossed out.
   // new bool[n-1]() automatically initializes the array with false.
   double maxIter = sqrt(n) - 2;
-  for (int i = 0; i <= maxIter; i++) {
-    if (list[i] == 0) { // cross out all larger multiples of i+2
-      for (int j = (i+2) * (i+2) - 2; j < n - 1; j += (i+2)) {
-        list[j] = true;
+
+  numberOps += n + 1;
+  for (long i = 0; i <= maxIter; i++) {
+    if (!crosses[i]) { // cross out all larger multiples of i+2
+      for (int j = (i+2)*(i+2) - 2; j < n - 1; j += (i+2)) {
+        crosses[j] = true;
+        numberOps += 5;
       }
     }
+    numberOps += 3;
   }
 
-  bool result = !list[n - 2];
-  delete [] list;
-  return result;
+  std::vector<long> primes;
+  primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
+  for (long i = 0; i < n - 1; i++) {
+    if (!crosses[i]) primes.push_back(i+2);
+    numberOps += 4;
+  }
+
+  delete [] crosses;
+  return primes;
 }
 	\end{lstlisting}
-\end{minipage}
+
+	\begin{lstlisting}[caption={Optimized parallel program for the Sieve of Eratosthenes}, label={prg:par_opt_sieve}, frame={single}]
+#include <bsp.hpp>
+#include <cmath>
+#include <vector>
+
+void bsp_sieve_optimized() {
+  bsp_begin(P);
+  double time0 = bsp_time();
+  long p = bsp_nprocs(), s = bsp_pid();
+
+  // We only consider odd numbers to save on memory and enhance performance
+  long globalArrayLength = (n - 1) / 2;
+  long arrayLength = (long) ceil(((double) globalArrayLength) / p);
+  long blockStart = 2 * s * arrayLength + 3;
+  bool *crosses = new bool[arrayLength]();
+  // We start sieving with prime 3; the first coordinator is processor 0.
+  long currPrime = 3, currCoordinator = 0, lastCoordinator = 0;
+  bsp_push_reg(&currPrime, sizeof(long));
+  bsp_push_reg(&currCoordinator, sizeof(long));
+  bsp_sync();
+
+  long maxSievePrime = (long) sqrt(n);
+  while (currPrime <= maxSievePrime) {
+    // Sieve, if the coordinator did not change
+    if (lastCoordinator == currCoordinator)
+      sieve_optimized(currPrime, crosses, blockStart, arrayLength);
+
+    // Let coordinator change current prime or coordinator
+    if (s == currCoordinator) {
+      // Search for the next prime in local array
+      long j = (currPrime - blockStart) / 2
+               + (lastCoordinator == currCoordinator);
+      while (j < arrayLength && crosses[j]) j++;
+      // Translate back to normal representation
+      currPrime = blockStart + j * 2;
+      lastCoordinator = currCoordinator;
+      // If j exceeds the local array, transfer coordination to next proc.
+      currCoordinator = j < arrayLength ? s : s + 1;
+    } else lastCoordinator = currCoordinator;
+    bsp_sync();
+
+    // Distribute information
+    if (s == lastCoordinator) {
+      for (long k = 0; k < p; k++) {
+        bsp_put(k, &currCoordinator, &currCoordinator, 0, sizeof(long));
+        bsp_put(k, &currPrime, &currPrime, 0, sizeof(long));
+      }
+    }
+    bsp_sync();
+  }
+
+  // Accumulate all local primes in list
+  std::vector<long> primes;
+  primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
+  for (long k = 0; k < arrayLength; k++) {
+    if (!crosses[k]) primes.push_back(2*k+3);
+  }
+  delete[] crosses;
+  bsp_pop_reg(currPrime);
+  bsp_pop_reg(currCoordinator);
+  bsp_sync();
+
+  double time1 = bsp_time();
+  if (s == 0) {
+    timeTaken = time1 - time0;
+  }
+  
+  // Do something with primes
+
+  primes.clear();
+  bsp_end();
+}
+
+void sieve_optimized(long prime, bool * crosses,
+                     long blockStart, long arrayLength) {
+  // Search for first multiple of currPrime in local array
+  // Start with currPrime^2 and check if it is prior to the local array
+  long j = (prime*prime - blockStart) / 2;
+  if (j < 0) {
+    // If so, take the first multiple of currPrime in local array:
+    long mod = blockStart % prime;
+    // If the remainder `mod` is ...
+    if (mod == 0) j = 0;// zero, j=0 represents the first multiple
+    else if (mod%2 == 1) j = (prime - mod)/2; // odd, advance by prime-mod.
+    else j = (2 * prime - mod) / 2; // even, advance by 2*prime-mod
+  }
+  // Now cross out all multiples of the prime starting with j
+  while (j < arrayLength) {
+    crosses[j] = true;
+    j += prime; // Step size: 2*prime/2; ignore even multiples.
+  }
+}
+	\end{lstlisting}
 	
 	
 	

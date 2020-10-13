@@ -12,7 +12,7 @@ long n;
 double timeTaken;
 long totalNumberPrimes;
 
-void bspsieve_coord() {
+void bsp_sieve() {
   bsp_begin(P);
   double time0 = bsp_time();
 
@@ -23,55 +23,64 @@ void bspsieve_coord() {
   long blockStart = s * arrayLength + 2;
 
   bool *crosses = new bool[arrayLength]();
-  long currPrimeAndCoord[2] = {2, 0};
-  long lastCoordinator = 0;
-  bsp_push_reg(currPrimeAndCoord, 2 * sizeof(long));
+  long currPrime = 2, currCoordinator = 0, lastCoordinator = 0;
+  bsp_push_reg(&currPrime, sizeof(long));
+  bsp_push_reg(&currCoordinator, sizeof(long));
   bsp_sync();
 
-  double maxSievePrime = sqrt(n);
-
-  while (currPrimeAndCoord[0] < maxSievePrime) {
+  double maxSievePrime = (long) sqrt(n);
+  while (currPrime < maxSievePrime) {
     // Sieve, if the coordinator didn't change.
-    if (lastCoordinator == currPrimeAndCoord[1]) {
-      long p = currPrimeAndCoord[0];
-      long j = p * p - blockStart;
+    if (lastCoordinator == currCoordinator) {
+      long j = currPrime * currPrime - blockStart;
       if (j < 0) {
-        long mod = blockStart % p;
-        j = (mod == 0) ? 0 : p - mod;
+        long mod = blockStart % currPrime;
+        j = (mod == 0) ? 0 : currPrime - mod;
       }
       while (j < arrayLength) {
         crosses[j] = true;
-        j += p;
+        j += currPrime;
       }
     }
 
     // Change current prime or coordinator
-    if (s == currPrimeAndCoord[1]) {
+    if (s == currCoordinator) {
       // Search for the next prime to sieve
-      long j = currPrimeAndCoord[0] - blockStart + (lastCoordinator == currPrimeAndCoord[1]);
+      long j = currPrime - blockStart + (lastCoordinator == currCoordinator);
       while (j < arrayLength && crosses[j]) j++;
-      currPrimeAndCoord[0] = blockStart + j;
+      currPrime = blockStart + j;
 
-      lastCoordinator = currPrimeAndCoord[1];
-      currPrimeAndCoord[1] = j < arrayLength ? s : s + 1;
+      lastCoordinator = currCoordinator;
+      currCoordinator = j < arrayLength ? s : s + 1;
 
-      long k = s + 1;
-      while (k < p) {
-        bsp_put(k, currPrimeAndCoord, currPrimeAndCoord, 0, 2 * sizeof(long));
-        k++;
+    } else lastCoordinator = currCoordinator;
+    bsp_sync();
+
+    if (s == lastCoordinator) {
+      for (long k = 0; k < p; k++) {
+        bsp_put(k, &currCoordinator, &currCoordinator, 0, sizeof(long));
+        bsp_put(k, &currPrime, &currPrime, 0, sizeof(long));
       }
-      bsp_sync();
-    } else {
-      lastCoordinator = currPrimeAndCoord[1];
-      bsp_sync();
     }
+    bsp_sync();
   }
 
   double time1 = bsp_time();
   if (s == 0) {
     timeTaken = time1 - time0;
-    printf("coord needed %fs. \n", timeTaken);
   }
+
+  // Accumulate all local primes in list
+  std::vector<long> primes;
+  primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
+  for (long j = 0; j < arrayLength; j++) {
+    if (!crosses[j] && blockStart+j <= n) // We might have few numbers >n
+      primes.push_back(blockStart+j);
+  }
+  delete[] crosses;
+  bsp_pop_reg(&currPrime);
+  bsp_pop_reg(&currCoordinator);
+  bsp_sync();
 
   if (PRINT_PRIMES) {
     for (long i = 0; i < n - 1; i++) {
@@ -82,75 +91,87 @@ void bspsieve_coord() {
     }
   }
 
-  bsp_pop_reg(currPrimeAndCoord);
-  delete[] crosses;
+  primes.clear();
   bsp_end();
 }
 
-void bspsieve_coord_ignore_even() {
+void sieve_optimized(long prime, bool * crosses,
+                     long blockStart, long arrayLength) {
+  // Search for first multiple of currPrime in local array
+  // Start with currPrime^2 and check if it is prior to the local array
+  long j = (prime*prime - blockStart) / 2;
+  if (j < 0) {
+    // If so, take the first multiple of currPrime in local array:
+    long mod = blockStart % prime;
+    // If the remainder `mod` is ...
+    if (mod == 0) j = 0;// zero, j=0 represents the first multiple
+    else if (mod%2 == 1) j = (prime - mod)/2; // odd, advance by prime-mod.
+    else j = (2 * prime - mod) / 2; // even, advance by 2*prime-mod
+  }
+  // Now cross out all multiples of the prime starting with j
+  while (j < arrayLength) {
+    crosses[j] = true;
+    j += prime; // Step size: 2*prime/2; ignore even multiples.
+  }
+}
+
+void bsp_sieve_optimized() {
   bsp_begin(P);
   double time0 = bsp_time();
+  long p = bsp_nprocs(), s = bsp_pid();
 
-  long p = bsp_nprocs(); // p = number of processors
-  long s = bsp_pid();    // s = processor number
+  // We only consider odd numbers to save on memory and enhance performance
   long globalArrayLength = (n - 1) / 2;
-
   long arrayLength = (long) ceil(((double) globalArrayLength) / p);
   long blockStart = 2 * s * arrayLength + 3;
-
   bool *crosses = new bool[arrayLength]();
-  long currPrimeAndCoord[2] = {3, 0};
-  long lastCoordinator = 0;
-  bsp_push_reg(currPrimeAndCoord, 2 * sizeof(long));
+  // We start sieving with prime 3; the first coordinator is processor 0.
+  long currPrime = 3, currCoordinator = 0, lastCoordinator = 0;
+  bsp_push_reg(&currPrime, sizeof(long));
+  bsp_push_reg(&currCoordinator, sizeof(long));
   bsp_sync();
 
-  double maxSievePrime = sqrt(n);
-
-  while (currPrimeAndCoord[0] <= maxSievePrime) {
-    // Sieve, if the coordinator didn't change.
-    if (lastCoordinator == currPrimeAndCoord[1]) {
-      long q = currPrimeAndCoord[0];
-      long j = (q * q - blockStart) / 2;
-      if (j < 0) {
-        long mod = blockStart % q;
-        if (mod == 0) j = 0;
-        else if (mod % 2 == 1) j = (q - mod) / 2;
-        else j = (2 * q - mod) / 2;
-      }
-      while (j < arrayLength) {
-        crosses[j] = true;
-        j += q;
-      }
-    }
-    bsp_sync(); // For matching BSP pattern
+  long maxSievePrime = (long) sqrt(n);
+  while (currPrime <= maxSievePrime) {
+    // Sieve, if the coordinator did not change
+    if (lastCoordinator == currCoordinator)
+      sieve_optimized(currPrime, crosses, blockStart, arrayLength);
 
     // Let coordinator change current prime or coordinator
-    if (s == currPrimeAndCoord[1]) {
-      // Search for the next prime to sieve
-      long j = (currPrimeAndCoord[0] - blockStart) / 2 + (lastCoordinator == currPrimeAndCoord[1]);
+    if (s == currCoordinator) {
+      // Search for the next prime in local array
+      long j = (currPrime - blockStart) / 2
+               + (lastCoordinator == currCoordinator);
       while (j < arrayLength && crosses[j]) j++;
-      currPrimeAndCoord[0] = blockStart + j * 2;
+      // Translate back to normal representation
+      currPrime = blockStart + j * 2;
+      lastCoordinator = currCoordinator;
+      // If j exceeds the local array, transfer coordination to next proc.
+      currCoordinator = j < arrayLength ? s : s + 1;
+    } else lastCoordinator = currCoordinator;
+    bsp_sync();
 
-      lastCoordinator = currPrimeAndCoord[1];
-      currPrimeAndCoord[1] = j < arrayLength ? s : s + 1;
-
+    // Distribute information
+    if (s == lastCoordinator) {
       for (long k = 0; k < p; k++) {
-        bsp_put(k, currPrimeAndCoord, currPrimeAndCoord, 0, 2 * sizeof(long));
+        bsp_put(k, &currCoordinator, &currCoordinator, 0, sizeof(long));
+        bsp_put(k, &currPrime, &currPrime, 0, sizeof(long));
       }
-      bsp_sync();
-    } else {
-      lastCoordinator = currPrimeAndCoord[1];
-      bsp_sync();
     }
+    bsp_sync();
   }
 
-  bsp_pop_reg(currPrimeAndCoord);
+  // Accumulate all local primes in list
   std::vector<long> primes;
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
-  for (long k = 0; k < arrayLength; k++) {
-    if (!crosses[k]) primes.push_back(2*k+3);
+  for (long j = 0; j < arrayLength; j++) {
+    if (!crosses[j] && blockStart+2*j <= n) // We might have few numbers >n
+      primes.push_back(blockStart+2*j);
   }
   delete[] crosses;
+  bsp_pop_reg(&currPrime);
+  bsp_pop_reg(&currCoordinator);
+  bsp_sync();
 
   double time1 = bsp_time();
   if (s == 0) {
@@ -164,7 +185,7 @@ void bspsieve_coord_ignore_even() {
     bsp_sync();
 
     numberPrimes[s] = primes.size();
-    bsp_put(0, &numberPrimes[s], numberPrimes, s * sizeof(long), sizeof(long));
+    bsp_put(0, &numberPrimes[s], numberPrimes, s*sizeof(long), sizeof(long));
     bsp_sync();
 
     if (s == 0) {
@@ -193,14 +214,15 @@ void bspsieve_coord_ignore_even() {
 }
 
 int main(int argc, char **argv) {
-  printf("Please enter your config (or d for defaults): minP,maxP,minN,maxN,nIters,print\n");
+  printf("Please enter your config (or d for defaults): minP,maxP,minN,maxN,nIters,print,opt\n");
   fflush(stdout);
   long maxP = bsp_nprocs();
   long minP = 1;
   long minN = 1;
   long maxN = 10e8;
   long nIters = 100;
-  scanf("%ld,%ld,%ld,%ld,%ld,%i", &minP, &maxP, &minN, &maxN, &nIters, &PRINT_PRIMES);
+  int opt = 1;
+  scanf("%ld,%ld,%ld,%ld,%ld,%i, %i", &minP, &maxP, &minN, &maxN, &nIters, &PRINT_PRIMES, &opt);
   if (P > bsp_nprocs()) {
     printf("Sorry, only %u processors available.\n", bsp_nprocs());
     fflush(stdout);
@@ -210,23 +232,18 @@ int main(int argc, char **argv) {
   printf("[\n");
   for (n = minN; n <= maxN; n *= 10) {
     for (P = minP; P <= maxP; P = (2*P <= maxP || P == maxP) ? 2*P : maxP ) {
-      double averageTime = 0;
       for (int i = 0; i < nIters; i++) {
-        bsp_init(bspsieve_coord_ignore_even, argc, argv);
-        bspsieve_coord_ignore_even();
-        averageTime += timeTaken;
+        if (opt) {
+          bsp_init(bsp_sieve_optimized, argc, argv);
+          bsp_sieve_optimized();
+        } else {
+          bsp_init(bsp_sieve, argc, argv);
+          bsp_sieve();
+        }
         printf("  { \"p\": %li, \"n\": %li, \"t\": %f, \"iter\": %i },\n", P, n, timeTaken, i);
       }
     }
   }
   printf("]\n");
   return 0;
-
-
-/*
-  n = 1000000000;
-
-  bsp_init(bspsieve_coord_ignore_even, argc, argv);
-  bspsieve_coord_ignore_even();
-  exit(EXIT_SUCCESS);*/
 }
