@@ -289,22 +289,6 @@ In each iteration, the coordinator only has to broadcast either the selected num
 As we only have to process numbers up to $\sqrt{n}$, a change in coordination responsibility will only be necessary, if there are many processors compared to the number $n$: Each block has $\ceil{n/p}$ numbers, therefore a change of coordinator is not necessary if $p \leq \sqrt{n}$, which is satisfied for high numbers $n$.
 Nevertheless, we will take care of this in the algorithm.
 
-Bringing all this knowledge into shape yields~\autoref{alg:parallel_sieve}.
-In a first step, every processor initialises variables holding the current prime number, the processor id of the current coordinator and an array of boolean values for indices from 2 up to $n$ distributed in blocks.
-As in~\autoref{prg:seq_sieve} this list saves for a specific number whether it has been crossed out already.
-
-Now we iterate as long as the current prime is greater than $\sqrt{n}$ and undertake the following two supersteps:
-In Superstep ($1_k$) each processor crosses out all larger multiples of the current prime, if the coordinator has not changed since the last iteration.
-This is necessary, to be sure that the variable for currentPrime actually holds a prime number and to avoid unnecessary work.
-In turn, the coordinator searches for the next prime.
-If his search is not successful, it means, that the next prime is to be expected in the block of the next processor.
-In that case, he transfers the responsibility for the coordination to the next processor.
-In superstep ($2_k$) the coordinator broadcasts this newly gained information to all other processors.
- 
-Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
-Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
-
-
 
 \renewcommand{\algorithmicrequire}{\textit{input:}\ \  }
 \renewcommand{\algorithmicensure}{\textit{output:}}
@@ -359,6 +343,39 @@ Therefore, we conclude the algorithm with superstep ($3$) by collecting all such
 		\EndFor
 	\end{algorithmic}
 \end{algorithm}
+
+
+Bringing all this knowledge into shape yields~\autoref{alg:parallel_sieve}.
+In a first step, every processor initialises variables holding the current prime number, the processor id of the current coordinator and an array of boolean values for indices from 2 up to $n$ distributed in blocks.
+As in~\autoref{prg:seq_sieve} this list saves for a specific number whether it has been crossed out already.
+
+Now we iterate as long as the current prime is greater than $\sqrt{n}$ and undertake the following two supersteps:
+In Superstep ($1_k$) each processor crosses out all larger multiples of the current prime, if the coordinator has not changed since the last iteration.
+This is necessary, to be sure that the variable for currentPrime actually holds a prime number and to avoid unnecessary work.
+In turn, the coordinator searches for the next prime.
+If his search is not successful, it means, that the next prime is to be expected in the block of the next processor.
+In that case, he transfers the responsibility for the coordination to the next processor.
+In superstep ($2_k$) the coordinator broadcasts this newly gained information to all other processors.
+ 
+Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
+Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
+
+
+
+Bringing all this knowledge into shape yields~\autoref{alg:parallel_sieve}.
+In a first step, every processor initialises variables holding the current prime number, the processor id of the current coordinator and an array of boolean values for indices from 2 up to $n$ distributed in blocks.
+As in~\autoref{prg:seq_sieve} this list saves for a specific number whether it has been crossed out already.
+
+Now we iterate as long as the current prime is greater than $\sqrt{n}$ and undertake the following two supersteps:
+In Superstep ($1_k$) each processor crosses out all larger multiples of the current prime, if the coordinator has not changed since the last iteration.
+This is necessary, to be sure that the variable for currentPrime actually holds a prime number and to avoid unnecessary work.
+In turn, the coordinator searches for the next prime.
+If his search is not successful, it means, that the next prime is to be expected in the block of the next processor.
+In that case, he transfers the responsibility for the coordination to the next processor.
+In superstep ($2_k$) the coordinator broadcasts this newly gained information to all other processors.
+ 
+Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
+Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
 
 
 \pagebreak
