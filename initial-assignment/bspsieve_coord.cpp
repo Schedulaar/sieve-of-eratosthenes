@@ -20,7 +20,7 @@ void bsp_sieve() {
   long p = bsp_nprocs(); // p = number of processors
   long s = bsp_pid();    // s = processor number
 
-  long arrayLength = (long) ceil(((double) (n - 1)) / p);
+  long arrayLength = ceil(((double) (n - 1)) / p);
   long blockStart = s * arrayLength + 2;
 
   bool *crosses = new bool[arrayLength]();
@@ -74,6 +74,7 @@ void bsp_sieve() {
   // Accumulate all local primes in list
   std::vector<long> primes;
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
+  if (s == 0) primes.push_back(2);
   for (long j = 0; j < arrayLength; j++) {
     if (!crosses[j] && blockStart+j <= n) // We might have few numbers >n
       primes.push_back(blockStart+j);
@@ -145,16 +146,94 @@ std::vector<long> bsp_twins(std::vector<long> primes) {
   return twins;
 }
 
+void bsp_goldbach(std::vector<long> primes) {
+  long p = bsp_nprocs(), s = bsp_pid();
+  long globalArrayLength = ceil(((double) n) / 2);
+  long arrayLength = ceil(((double) globalArrayLength) / p);
+  // proc i manages [2*i*arrayLength, ..., 2*(i+1)*arrayLength)
+
+  long * numberPrimes = new long[p];
+  bsp_push_reg(numberPrimes, p*sizeof(long));
+  numberPrimes[s] = primes.size();
+  bsp_sync();
+
+  for (long i = s + 1; i < p; i++)
+    bsp_put(i, &numberPrimes[s], numberPrimes, s*sizeof(long), sizeof(long));
+  bsp_sync();
+
+  // Make space for necessary primes
+  long numberNecPrimes = 0;
+  for (long i = 0; i <= s; i++) numberNecPrimes += numberPrimes[i];
+  long * necPrimes = new long [numberNecPrimes];
+
+  long ** primeBlocks = new long*[s+1];
+  primeBlocks[0] = necPrimes;
+  for (long i = 1; i <= s; i++) primeBlocks[i] = primeBlocks[i-1] + numberPrimes[i-1];
+
+  std::copy(primes.begin(), primes.end(), primeBlocks[s]);
+
+  bsp_push_reg(necPrimes, numberNecPrimes*sizeof(long));
+
+  bool * crosses = new bool[arrayLength]();
+  // Cross out 0 and 2.
+  if (s == 0) crosses[0] = crosses[1] = true;
+  bsp_sync();
+
+  // Every processor needs to cross out using blocks i,j with i+j=s or i+j+1=s
+  long high, low;
+  high = low = s/2;
+  for (long iter = 0; iter < p; iter++) {
+    if (low < 0 || high > s) {
+      bsp_sync();
+      continue;
+    }
+    if (low + high == s && high != s)
+      bsp_get(high, necPrimes, (primeBlocks[high] - necPrimes) * sizeof(long),
+              primeBlocks[high], numberPrimes[high] * sizeof(long));
+    else if (low + high + 1 == s)
+      bsp_get(low, necPrimes, (primeBlocks[low] - necPrimes) * sizeof(long),
+              primeBlocks[low], numberPrimes[low] * sizeof(long));
+    bsp_sync();
+
+    for (long i = 0; i < numberPrimes[high]; i++) {
+      long maxPrime = (s+1)*2*arrayLength - primeBlocks[high][i];
+      for (long j = 0; j < numberPrimes[low] && primeBlocks[low][j] < maxPrime; j++) {
+        long crossOut = primeBlocks[high][i] + primeBlocks[low][j];
+        if (crossOut%2 == 0 && crossOut >= s*2*arrayLength)
+          crosses[(crossOut - s*2*arrayLength) / 2] = true;
+      }
+    }
+    if (low + high + 1 == s) high++;
+    else low--;
+  }
+
+  // Check the conjecture
+  for (long i = 0; i < arrayLength; i++) {
+    if (!crosses[i] && (s*arrayLength + i)*2 <= n)
+      printf("Found counterexample: %li!\n", (s*arrayLength + i)*2);
+  }
+
+  delete [] crosses;
+  bsp_pop_reg(necPrimes);
+  bsp_pop_reg(numberPrimes);
+  delete [] primeBlocks;
+  delete [] numberPrimes;
+}
+
+
+
 void bsp_sieve_optimized() {
   bsp_begin(P);
   double time0 = bsp_time();
   long p = bsp_nprocs(), s = bsp_pid();
 
   // We only consider odd numbers to save on memory and enhance performance
-  long globalArrayLength = (n - 1) / 2;
-  long arrayLength = (long) ceil(((double) globalArrayLength) / p);
-  long blockStart = 2 * s * arrayLength + 3;
+  // We include 1 for convenience
+  long globalArrayLength = n / 2;
+  long arrayLength = ceil(((double) globalArrayLength) / p);
+  long blockStart = 2 * s * arrayLength + 1;
   bool *crosses = new bool[arrayLength]();
+  if (s == 0) crosses[0] = true; // Cross out 1
   // We start sieving with prime 3; the first coordinator is processor 0.
   long currPrime = 3, currCoordinator = 0, lastCoordinator = 0;
   bsp_push_reg(&currPrime, sizeof(long));
@@ -194,6 +273,7 @@ void bsp_sieve_optimized() {
   // Accumulate all local primes in list
   std::vector<long> primes;
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
+  if (s == 0) primes.push_back(2);
   for (long j = 0; j < arrayLength; j++) {
     if (!crosses[j] && blockStart + 2 * j <= n) // We might have few numbers >n
       primes.push_back(blockStart + 2 * j);
@@ -207,6 +287,8 @@ void bsp_sieve_optimized() {
   if (s == 0) {
     timeTaken = time1 - time0;
   }
+
+  bsp_goldbach(primes);
 
   if (GENERATE_TWINS) {
     std::vector<long> twins = bsp_twins(primes);
@@ -241,8 +323,6 @@ void bsp_sieve_optimized() {
   }
 
   if (PRINT_PRIMES) {
-    if (s == 0)
-      printf("2 is prime by definition.\n");
     for (long k = 0; k < p; k++) {
       if (s == k) {
         for (long i = 0; i < primes.size(); i++)
