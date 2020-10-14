@@ -407,26 +407,161 @@ Now, let us analyse how the program performs with up to 16 processors.
 This benchmark has been made both for the optimized and for unoptimized program.
 The results can be seen in\todo{ösdylkfjlsa dök fkjlalkjs dföa dlkj}.
 Each value in this figure is the mean running time of 100~iterations to minimize short-term disturbances.
+To make sure that these mean values are representative, the relative standard deviation was anlaysed in \todo{aasdlkföj asöldkf alsökjkf} as well.
+As expected, for larger values of $n$ the relative standard deviation of the running time get smaller for any number of processes.
+
+Looking at~\autoref{fig:par_opt_sieve} we notice, that the parallelization only has a positive effect once $n$ reaches at least $10^6$.
+For $n=10^9$ the speed-up with $16$ processors then is roughly $9.4$.
+Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $n=10^9$.
 
 \begin{figure}
+	\caption{Running time analysis of the parallel Sieve of Eratosthenes}
+	\label{fig:par_opt_sieve}
 		\begin{tikzpicture}
 		\begin{loglogaxis}[
 		scale only axis,
 		width=0.8\textwidth,
-		xmin=1,
-		ymin=1,
 		log basis x=10,
 		log basis y=10,
-		height=4cm,
+		height=7cm,
 		xlabel=$n$, 
-		ylabel=Time in $s$,
-		grid=major]
-		\addplot[only marks, mark=+] coordinates {
-			
+		ylabel=Mean Running Time in $s$,
+		title={Running Time of Optimized Program},
+		grid=major,
+		legend entries={$p=1$,$p=2$,$p=4$,$p=8$,$p=16$},
+		legend pos=south east]
+		\addplot coordinates {
+			(100, 0.0000066800000000000055)
+			(1000, 0.000010560000000000021)
+			(10000, 0.0000605200000000001)
+			(100000, 0.0005920100000000001)
+			(1000000, 0.00758344)
+			(10000000, 0.10046166)
+			(100000000, 3.01366798)
+			(1000000000, 40.483489250000005)
+		};
+		\addplot coordinates {
+			(100, 0.00008104999999999999)
+			(1000, 0.000048960000000000026)
+			(10000, 0.00011162999999999999)
+			(100000, 0.00049619)
+			(1000000, 0.004240320000000002)
+			(10000000, 0.049259389999999986)
+			(100000000, 1.6486180099999992)
+			(1000000000, 21.695564050000016)
+		};
+		\addplot coordinates {
+			(100, 0.000047699999999999994)
+			(1000, 0.00009109000000000002)
+			(10000, 0.00019095000000000003)
+			(100000, 0.0007305999999999999)
+			(1000000, 0.003066719999999999)
+			(10000000, 0.026568040000000015)
+			(100000000, 0.9389143300000005)
+			(1000000000, 11.186349019999996)
+		};
+		\addplot coordinates {
+			(100, 0.00045850999999999943)
+			(1000, 0.00022281000000000002)
+			(10000, 0.0005693099999999997)
+			(100000, 0.0008197699999999999)
+			(1000000, 0.00289696)
+			(10000000, 0.01664076000000001)
+			(100000000, 0.4329301399999999)
+			(1000000000, 5.802923569999998)
+		};
+		\addplot coordinates {
+			(100, 0.0014837600000000013)
+			(1000, 0.0006169300000000001)
+			(10000, 0.0008313899999999999)
+			(100000, 0.0023080899999999988)
+			(1000000, 0.006231130000000005)
+			(10000000, 0.01802138)
+			(100000000, 0.21772650000000004)
+			(1000000000, 4.323914559999998)
 		};
 		\end{loglogaxis}
 		\end{tikzpicture}
 \end{figure}
+
+
+\begin{figure}
+		\begin{tikzpicture}
+		\begin{semilogxaxis}[
+		scale only axis,
+		width=0.8\textwidth,
+		log basis x=10,
+		log basis y=10,
+		height=5cm,
+		xlabel=$n$, 
+		ylabel=Relative Standard Deviation,
+		title={Relative standard deviation of time analysis for~\autoref{fig:par_opt_sieve}},
+		grid=major,
+		legend entries={$p=1$,$p=2$,$p=4$,$p=8$,$p=16$},
+		legend pos=north east]
+		\addplot coordinates {
+		(100, 0.8687065697065419)
+		(1000, 0.0799914979806646)
+		(10000, 0.02067251364240473)
+		(100000, 0.009121704515100443)
+		(1000000, 0.013494599693025836)
+		(10000000, 0.08534650801677054)
+		(100000000, 0.08168939962827118)
+		(1000000000, 0.014598962720540154)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 6.574204637264616)
+		(1000, 0.04145585748301211)
+		(10000, 0.029523532536101297)
+		(100000, 0.806830570679923)
+		(1000000, 0.029201241156600208)
+		(10000000, 0.0847646784780893)
+		(100000000, 0.055673461478022525)
+		(1000000000, 0.023508879272757122)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 0.10807480178922649)
+		(1000, 0.08850313225937673)
+		(10000, 0.4214093855883432)
+		(100000, 1.061044119979381)
+		(1000000, 0.1741535452998721)
+		(10000000, 0.12907815614428186)
+		(100000000, 0.1255578413818158)
+		(1000000000, 0.008339998856569752)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 2.675417731532113)
+		(1000, 2.023031176887656)
+		(10000, 2.3191086389231472)
+		(100000, 0.16406770559612774)
+		(1000000, 0.305689773744763)
+		(10000000, 0.1291424157428458)
+		(100000000, 0.0997100269349392)
+		(1000000000, 0.005162268199345419)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 2.5428150071275124)
+		(1000, 3.611545332160197)
+		(10000, 1.776395545957089)
+		(100000, 1.8983872605331447)
+		(1000000, 1.0257164507406025)
+		(10000000, 0.4474433103897337)
+		(100000000, 0.1606753105874427)
+		(1000000000, 0.0311778237194774)
+		
+		};
+		\end{semilogxaxis}
+		\end{tikzpicture}
+\end{figure}	
+
 
 
 \pagebreak
@@ -598,5 +733,80 @@ std::vector<long> bsp_twins(std::vector<long> primes) {
 	\end{lstlisting}
 	
 	
+	\begin{lstlisting}[caption={Extension function for checking the Goldbach conjecture}, label={prg:par_opt_sieve}, frame={single}]
+void bsp_goldbach(std::vector<long> primes) {
+  long p = bsp_nprocs(), s = bsp_pid();
+  long globalArrayLength = ceil(((double) n) / 2);
+  long arrayLength = ceil(((double) globalArrayLength) / p);
+  // proc i manages [2*i*arrayLength, ..., 2*(i+1)*arrayLength)
+
+  long * numberPrimes = new long[p];
+  bsp_push_reg(numberPrimes, p*sizeof(long));
+  numberPrimes[s] = primes.size();
+  bsp_sync();
+
+  for (long i = s + 1; i < p; i++)
+    bsp_put(i, &numberPrimes[s], numberPrimes, s*sizeof(long), sizeof(long));
+  bsp_sync();
+
+  // Make space for necessary primes
+  long numberNecPrimes = 0;
+  for (long i = 0; i <= s; i++) numberNecPrimes += numberPrimes[i];
+  long * necPrimes = new long [numberNecPrimes];
+
+  long ** primeBlocks = new long*[s+1];
+  primeBlocks[0] = necPrimes;
+  for (long i = 1; i <= s; i++) primeBlocks[i] = primeBlocks[i-1] + numberPrimes[i-1];
+
+  std::copy(primes.begin(), primes.end(), primeBlocks[s]);
+
+  bsp_push_reg(necPrimes, numberNecPrimes*sizeof(long));
+
+  bool * crosses = new bool[arrayLength]();
+  // Cross out 0 and 2.
+  if (s == 0) crosses[0] = crosses[1] = true;
+  bsp_sync();
+
+  // Every processor needs to cross out using blocks i,j with i+j=s or i+j+1=s
+  long high, low;
+  high = low = s/2;
+  for (long iter = 0; iter < p; iter++) {
+    if (low < 0 || high > s) {
+      bsp_sync();
+      continue;
+    }
+    if (low + high == s && high != s)
+      bsp_get(high, necPrimes, (primeBlocks[high] - necPrimes) * sizeof(long),
+              primeBlocks[high], numberPrimes[high] * sizeof(long));
+    else if (low + high + 1 == s)
+      bsp_get(low, necPrimes, (primeBlocks[low] - necPrimes) * sizeof(long),
+              primeBlocks[low], numberPrimes[low] * sizeof(long));
+    bsp_sync();
+
+    for (long i = 0; i < numberPrimes[high]; i++) {
+      long maxPrime = (s+1)*2*arrayLength - primeBlocks[high][i];
+      for (long j = 0; j < numberPrimes[low] && primeBlocks[low][j] < maxPrime; j++) {
+        long crossOut = primeBlocks[high][i] + primeBlocks[low][j];
+        if (crossOut%2 == 0 && crossOut >= s*2*arrayLength)
+          crosses[(crossOut - s*2*arrayLength) / 2] = true;
+      }
+    }
+    if (low + high + 1 == s) high++;
+    else low--;
+  }
+
+  // Check the conjecture
+  for (long i = 0; i < arrayLength; i++) {
+    if (!crosses[i] && (s*arrayLength + i)*2 <= n)
+      printf("Found counterexample: %li!\n", (s*arrayLength + i)*2);
+  }
+
+  delete [] crosses;
+  bsp_pop_reg(necPrimes);
+  bsp_pop_reg(numberPrimes);
+  delete [] primeBlocks;
+  delete [] numberPrimes;
+}
+	\end{lstlisting}
 
 \end{document}
