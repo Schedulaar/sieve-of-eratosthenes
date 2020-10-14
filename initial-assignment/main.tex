@@ -6,6 +6,7 @@
 \usepackage{hyperref}
 \usepackage[utf8]{inputenc}
 \usepackage{algorithm,algpseudocode}
+\usepackage{float}
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{xcolor}
@@ -97,7 +98,7 @@ Even faster: Once we choose to erase all larger multiples of some number, we can
 This very simple algorithm is implemented in~\autoref{prg:seq_sieve} using the programming language C++.
 It initalises an array of size $n-1$ for the numbers $2,\dots, n$ with the value $\mathbf{false}$.
 We now interpret $\crosses[i] == \mathbf{true}$ as the number $i+2$ being crossed out, and sequentially go through all numbers up to $n$ and cross out larger multiples of primes as explained above.
-Operations involving the variable $\mathrm{numberOps}$ in~\autoref{prg:seq_sieve} are only used for numerically evaluating the cost of the algorithm, which we will come to after analyzing the asymptotic cost.
+Operations involving the variable $\mathrm{numberOps}$ in~\autoref{prg:seq_sieve} are only used for numerically evaluating the cost of the algorithm, which we will come to after analysing the asymptotic cost.
 
 \begin{proposition}\label{prop:seq_sieve}
 	The sequential implementation in~\autoref{prg:seq_sieve} has cost $\bigO(n \log \log n)$.
@@ -261,6 +262,8 @@ Hence $\Delta(\mathrm{numberOps})$ resembles $\log\log n$.
 
 \section{A parallel algorithm of the Sieve of Eratosthenes}
 
+\subsection{The Algorithm}
+
 When coming up with an idea to parallelise this algorithm, one needs to consider several questions:
 What kind of work can be easily parallelised?
 How should the numbers be distributed over the processors and what are the implications for designing the parallel algorithm?
@@ -360,26 +363,11 @@ In superstep ($2_k$) the coordinator broadcasts this newly gained information to
 Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
 Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
 
-
-
-Bringing all this knowledge into shape yields~\autoref{alg:parallel_sieve}.
-In a first step, every processor initialises variables holding the current prime number, the processor id of the current coordinator and an array of boolean values for indices from 2 up to $n$ distributed in blocks.
-As in~\autoref{prg:seq_sieve} this list saves for a specific number whether it has been crossed out already.
-
-Now we iterate as long as the current prime is greater than $\sqrt{n}$ and undertake the following two supersteps:
-In Superstep ($1_k$) each processor crosses out all larger multiples of the current prime, if the coordinator has not changed since the last iteration.
-This is necessary, to be sure that the variable for currentPrime actually holds a prime number and to avoid unnecessary work.
-In turn, the coordinator searches for the next prime.
-If his search is not successful, it means, that the next prime is to be expected in the block of the next processor.
-In that case, he transfers the responsibility for the coordination to the next processor.
-In superstep ($2_k$) the coordinator broadcasts this newly gained information to all other processors.
- 
-Once all numbers up to $\sqrt{n}$ have been processed, we know that the list holding all crosses is finished.
-Therefore, we conclude the algorithm with superstep ($3$) by collecting all such numbers of the local block that have not been crossed out and are therefore prime.
+\subsection{Cost Analysis}
 
 Let us now estimate the BSP cost of this algorithm:
-For that, $l$ denotes the latency for synchronization and $g$ denotes the gap between sending successive data words.
-Superstep ($0$) costs about $n/p$ for initializing the $\crosses$ array.
+For that, $l$ denotes the latency for synchronisation and $g$ denotes the gap between sending successive data words.
+Superstep ($0$) costs about $n/p$ for initialising the $\crosses$ array.
 The sieving loop of Superstep ($1_k$) is executed once for every prime in $2,\dots,\floor{\sqrt{n}}$.
 Similarly to the proof of~\autoref{prop:seq_sieve} we get a cost bound of $4\cdot n/p \cdot \ln(\ln(n))$, where we bound the comparisons and index calculations per loop iteration by 4.
 As changing the coordinator does practically not occur for large $n$, we ignore the second part of superstep ($1_k$).
@@ -387,34 +375,24 @@ Superstep ($2_k$) now involves a communication in a $2(p-1)$-relation.
 As the number of primes smaller than or equal to $n$ is approximately $n/\ln n$, this introduces a cost smaller than $2p\cdot n/\ln n\cdot g$.
 Also total number of occurences of supersteps ($1_k$) and ($2_k$) is approximately  $n/\ln n$ introducing a communication cost of $n/\ln n \cdot l$.
 The last superstep accumulates all primes in a list which takes every processor only $n/p$ operations.
-The synchronization of supersteps ($0$) and ($3$) can be neglected.
+The synchronisation of supersteps ($0$) and ($3$) can be neglected.
 Hence the overall estimate of the BSP cost accumulates to
 \[
 	\frac{2n + 4n \ln \ln n}{p} + \frac{2p n}{\ln n}g + \frac{n}{\ln n} l.
 \]
 
-One might consider optimizing the algorithm for a speed improvement:
+One might consider optimising the algorithm for a speed improvement:
 If we let each processor compute the primes up to $\sqrt{n}$ themselves, we could abandon all communication altogether, but this comes with the expense of an additional memory requirement, hence this improvement was not applied here.
 
 For putting this algorithm into an actual parallel program most efforts went into getting the local indices of the $\crosses$ array right.
 The parallel program is implemented in two different ways:
 In the first attempt, the program was implemented exactly like the algorithm suggests.
-As an optimization, we save half of the space for the $\crosses$ array by ignoring all even numbers, because we know, that $2$ is the only even prime number.
+As an optimisation, we save half of the space for the $\crosses$ array by ignoring all even numbers, because we know, that $2$ is the only even prime number.
 Although ignoring even numbers makes local index computation slightly harder, it does not only save on memory, but as we will see also improves the running time.
 The resulting optimised program can be seen in~\autoref{prg:par_opt_sieve}.
 
-Now, let us analyse how the program performs with up to 16 processors.
-This benchmark has been made both for the optimised and for unoptimised program.
-The results can be seen in\todo{ösdylkfjlsa dök fkjlalkjs dföa dlkj}.
-Each value in this figure is the mean running time of 100~iterations to minimize short-term disturbances.
-To make sure that these mean values are representative, the relative standard deviation was anlaysed in \todo{aasdlkföj asöldkf alsökjkf} as well.
-As expected, for larger values of $n$ the relative standard deviation of the running time get smaller for any number of processes.
-
-Looking at~\autoref{fig:par_opt_sieve} we notice, that the parallelization only has a positive effect once $n$ reaches at least $10^6$.
-For $n=10^9$ the speed-up with $16$ processors then is roughly $9.4$.
-Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $n=10^9$.
-
-\begin{figure}
+\begin{minipage}{\linewidth}	
+\begin{figure}[H]
 	\caption{Running time analysis of the parallel Sieve of Eratosthenes}
 	\label{fig:par_opt_sieve}
 	\centering
@@ -557,8 +535,9 @@ Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $
 \end{figure}
 
 
-\begin{figure}
+\begin{figure}[H]
 	\caption{Relative Standard Deviation of time analysis for~\autoref{fig:par_opt_sieve}}
+	\label{fig:par_sieve_rel_deviation}
 	\centering
 		\begin{tikzpicture}
 		\begin{semilogxaxis}[
@@ -715,7 +694,19 @@ Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $
 		\end{semilogxaxis}
 		\end{tikzpicture}
 \end{figure}	
+\end{minipage}
 
+Now, let us analyse how the program performs with up to 16 processors.
+This benchmark has been made both for the optimised and for the unoptimised program.
+The running times of both programs can be seen in~\autoref{fig:par_opt_sieve}.
+Each value in this figure is the mean running time of 100~iterations to minimise short-term disturbances.
+This has been made for $p\in\{1,2,4,8,16\}$ and $n\in\{10^i\mid i\in\{2,\dots,9\} \}$.
+To make sure that these mean values are representative, the relative standard deviation can be anlaysed in~\autoref{fig:par_sieve_rel_deviation} as well.
+As expected, for larger values of $n$ the relative standard deviation of the running time get smaller for any number of processes.
+
+Looking at~\autoref{fig:par_opt_sieve} we notice, that the parallelisation only has a positive effect once $n$ reaches at least $10^6$.
+For $n=10^9$ the speed-up with $16$ processors then is roughly $9.4$.
+Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $n=10^9$.
 
 
 \pagebreak
@@ -732,7 +723,7 @@ long numberOps = 0;
 std::vector<long> sieve(long n) {
   bool *crosses = new bool[n - 1]();
   // list[i] == true means i+2 is crossed out.
-  // new bool[n-1]() automatically initializes the array with false.
+  // new bool[n-1]() automatically initialises the array with false.
   double maxIter = sqrt(n) - 2;
   numberOps += n + 1;
   for (long i = 0; i <= maxIter; i++) {
