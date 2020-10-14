@@ -401,10 +401,10 @@ The parallel program is implemented in two different ways:
 In the first attempt, the program was implemented exactly like the algorithm suggests.
 As an optimization, we save half of the space for the $\crosses$ array by ignoring all even numbers, because we know, that $2$ is the only even prime number.
 Although ignoring even numbers makes local index computation slightly harder, it does not only save on memory, but as we will see also improves the running time.
-The resulting optimized program can be seen in~\autoref{prg:par_opt_sieve}.
+The resulting optimised program can be seen in~\autoref{prg:par_opt_sieve}.
 
 Now, let us analyse how the program performs with up to 16 processors.
-This benchmark has been made both for the optimized and for unoptimized program.
+This benchmark has been made both for the optimised and for unoptimised program.
 The results can be seen in\todo{ösdylkfjlsa dök fkjlalkjs dföa dlkj}.
 Each value in this figure is the mean running time of 100~iterations to minimize short-term disturbances.
 To make sure that these mean values are representative, the relative standard deviation was anlaysed in \todo{aasdlkföj asöldkf alsökjkf} as well.
@@ -417,85 +417,239 @@ Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $
 \begin{figure}
 	\caption{Running time analysis of the parallel Sieve of Eratosthenes}
 	\label{fig:par_opt_sieve}
-		\begin{tikzpicture}
-		\begin{loglogaxis}[
+	\centering
+	\begin{tikzpicture}
+	\begin{loglogaxis}[
 		scale only axis,
 		width=0.8\textwidth,
 		log basis x=10,
 		log basis y=10,
-		height=7cm,
+		ymin=0.000002,
+		ymax=200,
+		height=6.2cm,
 		xlabel=$n$, 
 		ylabel=Mean Running Time in $s$,
-		title={Running Time of Optimized Program},
+		title={Unoptimised Program},
 		grid=major,
 		legend entries={$p=1$,$p=2$,$p=4$,$p=8$,$p=16$},
 		legend pos=south east]
 		\addplot coordinates {
-			(100, 0.0000066800000000000055)
-			(1000, 0.000010560000000000021)
-			(10000, 0.0000605200000000001)
-			(100000, 0.0005920100000000001)
-			(1000000, 0.00758344)
-			(10000000, 0.10046166)
-			(100000000, 3.01366798)
-			(1000000000, 40.483489250000005)
+			(100, 0.0000060000000000000035)
+			(1000, 0.000008019999999999986)
+			(10000, 0.00005325000000000004)
+			(100000, 0.0005608699999999997)
+			(1000000, 0.009576549999999998)
+			(10000000, 0.16271457)
+			(100000000, 6.204124599999999)
+			(1000000000, 77.03984354000002)
+		};
+		
+		\addplot coordinates {
+			(100, 0.00003313999999999998)
+			(1000, 0.000043469999999999995)
+			(10000, 0.00011114999999999992)
+			(100000, 0.00069373)
+			(1000000, 0.005331030000000001)
+			(10000000, 0.07657337)
+			(100000000, 3.3534415700000006)
+			(1000000000, 41.51521570999999)
 		};
 		\addplot coordinates {
-			(100, 0.00008104999999999999)
-			(1000, 0.000048960000000000026)
-			(10000, 0.00011162999999999999)
-			(100000, 0.00049619)
-			(1000000, 0.004240320000000002)
-			(10000000, 0.049259389999999986)
-			(100000000, 1.6486180099999992)
-			(1000000000, 21.695564050000016)
+			(100, 0.000052720000000000003)
+			(1000, 0.00008104)
+			(10000, 0.00018946000000000007)
+			(100000, 0.0006461200000000001)
+			(1000000, 0.00350927)
+			(10000000, 0.03839258)
+			(100000000, 2.02312066)
+			(1000000000, 21.126782429999995)
 		};
 		\addplot coordinates {
-			(100, 0.000047699999999999994)
-			(1000, 0.00009109000000000002)
-			(10000, 0.00019095000000000003)
-			(100000, 0.0007305999999999999)
-			(1000000, 0.003066719999999999)
-			(10000000, 0.026568040000000015)
-			(100000000, 0.9389143300000005)
-			(1000000000, 11.186349019999996)
+			(100, 0.00017082000000000002)
+			(1000, 0.00026198999999999987)
+			(10000, 0.00032855000000000004)
+			(100000, 0.00079255)
+			(1000000, 0.0033914300000000004)
+			(10000000, 0.022402059999999988)
+			(100000000, 1.11546878)
+			(1000000000, 11.059131900000004)
 		};
+		
 		\addplot coordinates {
-			(100, 0.00045850999999999943)
-			(1000, 0.00022281000000000002)
-			(10000, 0.0005693099999999997)
-			(100000, 0.0008197699999999999)
-			(1000000, 0.00289696)
-			(10000000, 0.01664076000000001)
-			(100000000, 0.4329301399999999)
-			(1000000000, 5.802923569999998)
-		};
-		\addplot coordinates {
-			(100, 0.0014837600000000013)
-			(1000, 0.0006169300000000001)
-			(10000, 0.0008313899999999999)
-			(100000, 0.0023080899999999988)
-			(1000000, 0.006231130000000005)
-			(10000000, 0.01802138)
-			(100000000, 0.21772650000000004)
-			(1000000000, 4.323914559999998)
-		};
+			(100, 0.0003873299999999999)
+			(1000, 0.0008949600000000001)
+			(10000, 0.0011080400000000002)
+			(100000, 0.002068410000000001)
+			(1000000, 0.00509183)
+			(10000000, 0.022208490000000004)
+			(100000000, 0.6635081599999999)
+			(1000000000, 6.578784989999999)
+		};			
 		\end{loglogaxis}
-		\end{tikzpicture}
+	\end{tikzpicture}
+	\begin{tikzpicture}
+	\begin{loglogaxis}[
+	scale only axis,
+	width=0.8\textwidth,
+	log basis x=10,
+	log basis y=10,
+	ymin=0.000002,
+	ymax=200,
+	height=6.2cm,
+	xlabel=$n$, 
+	ylabel=Mean Running Time in $s$,
+	title={Optimised Program},
+	grid=major,
+	legend entries={$p=1$,$p=2$,$p=4$,$p=8$,$p=16$},
+	legend pos=south east]
+	\addplot coordinates {
+		(100, 0.0000066800000000000055)
+		(1000, 0.000010560000000000021)
+		(10000, 0.0000605200000000001)
+		(100000, 0.0005920100000000001)
+		(1000000, 0.00758344)
+		(10000000, 0.10046166)
+		(100000000, 3.01366798)
+		(1000000000, 40.483489250000005)
+	};
+	\addplot coordinates {
+		(100, 0.00008104999999999999)
+		(1000, 0.000048960000000000026)
+		(10000, 0.00011162999999999999)
+		(100000, 0.00049619)
+		(1000000, 0.004240320000000002)
+		(10000000, 0.049259389999999986)
+		(100000000, 1.6486180099999992)
+		(1000000000, 21.695564050000016)
+	};
+	\addplot coordinates {
+		(100, 0.000047699999999999994)
+		(1000, 0.00009109000000000002)
+		(10000, 0.00019095000000000003)
+		(100000, 0.0007305999999999999)
+		(1000000, 0.003066719999999999)
+		(10000000, 0.026568040000000015)
+		(100000000, 0.9389143300000005)
+		(1000000000, 11.186349019999996)
+	};
+	\addplot coordinates {
+		(100, 0.00045850999999999943)
+		(1000, 0.00022281000000000002)
+		(10000, 0.0005693099999999997)
+		(100000, 0.0008197699999999999)
+		(1000000, 0.00289696)
+		(10000000, 0.01664076000000001)
+		(100000000, 0.4329301399999999)
+		(1000000000, 5.802923569999998)
+	};
+	\addplot coordinates {
+		(100, 0.0014837600000000013)
+		(1000, 0.0006169300000000001)
+		(10000, 0.0008313899999999999)
+		(100000, 0.0023080899999999988)
+		(1000000, 0.006231130000000005)
+		(10000000, 0.01802138)
+		(100000000, 0.21772650000000004)
+		(1000000000, 4.323914559999998)
+	};
+	\end{loglogaxis}
+	\end{tikzpicture}
 \end{figure}
 
 
 \begin{figure}
+	\caption{Relative Standard Deviation of time analysis for~\autoref{fig:par_opt_sieve}}
+	\centering
 		\begin{tikzpicture}
 		\begin{semilogxaxis}[
 		scale only axis,
-		width=0.8\textwidth,
+		width=0.4\textwidth,
 		log basis x=10,
 		log basis y=10,
-		height=5cm,
+		height=4cm,
 		xlabel=$n$, 
-		ylabel=Relative Standard Deviation,
-		title={Relative standard deviation of time analysis for~\autoref{fig:par_opt_sieve}},
+		ylabel=Rel. Deviation,
+		ylabel near ticks,
+		ymax=7,
+		ymin=-0.7,
+		title={Unptimised Program},
+		grid=major,
+		legend entries={$p=1$,$p=2$,$p=4$,$p=8$,$p=16$},
+		legend pos=north east]
+		\addplot coordinates {
+		(100, 0.40340859692355235)
+		(1000, 0.02493765586034907)
+		(10000, 0.05088096164174562)
+		(100000, 0.0038067790454632154)
+		(1000000, 0.020418533651413596)
+		(10000000, 0.25293744528433115)
+		(100000000, 0.025694683169385966)
+		(1000000000, 0.01598727793789068)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 0.1619031789957998)
+		(1000, 0.05195169822932531)
+		(10000, 0.03367224114302749)
+		(100000, 0.13299049994172962)
+		(1000000, 0.007874813131699599)
+		(10000000, 0.08365855830144216)
+		(100000000, 0.026867510650708894)
+		(1000000000, 0.009352677348322527)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 0.11268818784362933)
+		(1000, 0.09235632391954453)
+		(10000, 0.06085183414294938)
+		(100000, 0.8792864002944591)
+		(1000000, 0.2516692022670629)
+		(10000000, 0.05720230171308279)
+		(100000000, 0.09686973651528466)
+		(1000000000, 0.015503076214066998)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 4.367921607554625)
+		(1000, 2.5867560883837033)
+		(10000, 0.19267169396738515)
+		(100000, 0.040107614912353436)
+		(1000000, 0.4730480931810351)
+		(10000000, 0.12037961490266519)
+		(100000000, 0.039864793792599225)
+		(1000000000, 0.007970675963974338)
+		
+		};
+		
+		\addplot coordinates {
+		(100, 2.652328485461903)
+		(1000, 2.492576004717528)
+		(10000, 1.6978626520383377)
+		(100000, 1.147083576080773)
+		(1000000, 0.7564426865409155)
+		(10000000, 0.3796532603114533)
+		(100000000, 0.05581613530071868)
+		(1000000000, 0.017534814849470455)
+		
+		};
+		\end{semilogxaxis}
+		\end{tikzpicture}
+		\begin{tikzpicture}
+		\begin{semilogxaxis}[
+		scale only axis,
+		width=0.4\textwidth,
+		log basis x=10,
+		log basis y=10,
+		ylabel near ticks,
+		height=4cm,
+		ymax=7,
+		ymin=-0.7,
+		xlabel=$n$, 
+		ylabel=Rel. Deviation,
+		title={Optimised Program},
 		grid=major,
 		legend entries={$p=1$,$p=2$,$p=4$,$p=8$,$p=16$},
 		legend pos=north east]
@@ -604,12 +758,12 @@ std::vector<long> sieve(long n) {
 }
 	\end{lstlisting}
 
-	\begin{lstlisting}[caption={Optimized parallel program for the Sieve of Eratosthenes}, label={prg:par_opt_sieve}, frame={single}]
+	\begin{lstlisting}[caption={Optimised parallel program for the Sieve of Eratosthenes}, label={prg:par_opt_sieve}, frame={single}]
 #include <bsp.hpp>
 #include <cmath>
 #include <vector>
 
-void bsp_sieve_optimized() {
+void bsp_sieve_optimised() {
   bsp_begin(P);
   double time0 = bsp_time();
   long p = bsp_nprocs(), s = bsp_pid();
@@ -629,7 +783,7 @@ void bsp_sieve_optimized() {
   while (currPrime <= maxSievePrime) {
     // Sieve, if the coordinator did not change
     if (lastCoordinator == currCoordinator)
-      sieve_optimized(currPrime, crosses, blockStart, arrayLength);
+      sieve_optimised(currPrime, crosses, blockStart, arrayLength);
 
     // Let coordinator change current prime or coordinator
     if (s == currCoordinator) {
@@ -677,7 +831,7 @@ void bsp_sieve_optimized() {
   bsp_end();
 }
 
-void sieve_optimized(long prime, bool * crosses,
+void sieve_optimised(long prime, bool * crosses,
                      long blockStart, long arrayLength) {
   // Search for first multiple of prime in local array
   // Start with prime^2 and check if it is prior to the local array
