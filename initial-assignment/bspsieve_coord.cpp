@@ -158,20 +158,19 @@ void bsp_goldbach(std::vector<long> primes) {
   bsp_sync();
 
   for (long i = s + 1; i < p; i++)
-    bsp_put(i, &numberPrimes[s], numberPrimes, s*sizeof(long), sizeof(long));
+    bsp_put(i, &numberPrimes[s], numberPrimes,
+            s*sizeof(long), sizeof(long));
   bsp_sync();
 
   // Make space for necessary primes
   long numberNecPrimes = 0;
   for (long i = 0; i <= s; i++) numberNecPrimes += numberPrimes[i];
   long * necPrimes = new long [numberNecPrimes];
-
-  long ** primeBlocks = new long*[s+1];
+  long ** primeBlocks = new long*[s+1]; // Indirection for convenience
   primeBlocks[0] = necPrimes;
-  for (long i = 1; i <= s; i++) primeBlocks[i] = primeBlocks[i-1] + numberPrimes[i-1];
-
+  for (long i = 1; i <= s; i++)
+    primeBlocks[i] = primeBlocks[i-1] + numberPrimes[i-1];
   std::copy(primes.begin(), primes.end(), primeBlocks[s]);
-
   bsp_push_reg(necPrimes, numberNecPrimes*sizeof(long));
 
   bool * crosses = new bool[arrayLength]();
@@ -179,7 +178,9 @@ void bsp_goldbach(std::vector<long> primes) {
   if (s == 0) crosses[0] = crosses[1] = true;
   bsp_sync();
 
-  // Every processor needs to cross out using blocks i,j with i+j=s or i+j+1=s
+  // Every processor needs to cross out
+  // using blocks i,j with i+j=s or i+j+1=s.
+  // There are exactly p iterations.
   long high, low;
   high = low = s/2;
   for (long iter = 0; iter < p; iter++) {
@@ -188,16 +189,17 @@ void bsp_goldbach(std::vector<long> primes) {
       continue;
     }
     if (low + high == s && high != s)
-      bsp_get(high, necPrimes, (primeBlocks[high] - necPrimes) * sizeof(long),
-              primeBlocks[high], numberPrimes[high] * sizeof(long));
+      bsp_get(high, necPrimes, (primeBlocks[high]-necPrimes)*sizeof(long),
+              primeBlocks[high], numberPrimes[high]*sizeof(long));
     else if (low + high + 1 == s)
-      bsp_get(low, necPrimes, (primeBlocks[low] - necPrimes) * sizeof(long),
-              primeBlocks[low], numberPrimes[low] * sizeof(long));
+      bsp_get(low, necPrimes, (primeBlocks[low]-necPrimes)*sizeof(long),
+              primeBlocks[low], numberPrimes[low]*sizeof(long));
     bsp_sync();
 
     for (long i = 0; i < numberPrimes[high]; i++) {
       long maxPrime = (s+1)*2*arrayLength - primeBlocks[high][i];
-      for (long j = 0; j < numberPrimes[low] && primeBlocks[low][j] < maxPrime; j++) {
+      for (long j = 0;
+           j < numberPrimes[low] && primeBlocks[low][j] < maxPrime; j++) {
         long crossOut = primeBlocks[high][i] + primeBlocks[low][j];
         if (crossOut%2 == 0 && crossOut >= s*2*arrayLength)
           crosses[(crossOut - s*2*arrayLength) / 2] = true;
