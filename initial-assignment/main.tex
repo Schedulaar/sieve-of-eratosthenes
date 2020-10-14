@@ -734,7 +734,6 @@ std::vector<long> sieve(long n) {
   // list[i] == true means i+2 is crossed out.
   // new bool[n-1]() automatically initializes the array with false.
   double maxIter = sqrt(n) - 2;
-
   numberOps += n + 1;
   for (long i = 0; i <= maxIter; i++) {
     if (!crosses[i]) { // cross out all larger multiples of i+2
@@ -771,10 +770,12 @@ void bsp_sieve_optimised() {
   long p = bsp_nprocs(), s = bsp_pid();
 
   // We only consider odd numbers to save on memory and enhance performance
-  long globalArrayLength = (n - 1) / 2;
-  long arrayLength = (long) ceil(((double) globalArrayLength) / p);
-  long blockStart = 2 * s * arrayLength + 3;
+  // We include 1 for convenience
+  long globalArrayLength = n / 2;
+  long arrayLength = ceil(((double) globalArrayLength) / p);
+  long blockStart = 2 * s * arrayLength + 1;
   bool *crosses = new bool[arrayLength]();
+  if (s == 0) crosses[0] = true; // Cross out 1
   // We start sieving with prime 3; the first coordinator is processor 0.
   long currPrime = 3, currCoordinator = 0, lastCoordinator = 0;
   bsp_push_reg(&currPrime, sizeof(long));
@@ -814,12 +815,14 @@ void bsp_sieve_optimised() {
   // Accumulate all local primes in list
   std::vector<long> primes;
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
-  for (long k = 0; k < arrayLength; k++) {
-    if (!crosses[k]) primes.push_back(2*k+3);
+  if (s == 0) primes.push_back(2);
+  for (long j = 0; j < arrayLength; j++) {
+    if (!crosses[j] && blockStart + 2 * j <= n) // We might have few numbers >n
+      primes.push_back(blockStart + 2 * j);
   }
   delete[] crosses;
-  bsp_pop_reg(currPrime);
-  bsp_pop_reg(currCoordinator);
+  bsp_pop_reg(&currPrime);
+  bsp_pop_reg(&currCoordinator);
   bsp_sync();
 
   double time1 = bsp_time();
@@ -888,7 +891,7 @@ std::vector<long> bsp_twins(std::vector<long> primes) {
 }
 	\end{lstlisting}
 	
-	
+\pagebreak
 	\begin{lstlisting}[caption={Extension function for checking the Goldbach conjecture}, label={prg:par_opt_sieve}, frame={single}]
 #include <bsp.hpp>
 #include <cstdio>
