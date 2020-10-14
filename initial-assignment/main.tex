@@ -11,6 +11,8 @@
 \usepackage{amsmath}
 \usepackage{xcolor}
 \newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\bibliographystyle{plain}
 
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -705,9 +707,130 @@ To make sure that these mean values are representative, the relative standard de
 As expected, for larger values of $n$ the relative standard deviation of the running time get smaller for any number of processes.
 
 Looking at~\autoref{fig:par_opt_sieve} we notice, that the parallelisation only has a positive effect once $n$ reaches at least $10^6$.
+The reason that below $10^6$ more processor means longer running time is due to the communication of the coordinator.
+This can also be seen by looking at the coefficient of $g$ in the BSP cost:
+Only for high $n$ the benefit of making the computation time smaller makes up the increase in communication time.
 For $n=10^9$ the speed-up with $16$ processors then is roughly $9.4$.
 Interestingly using $8$ processors has already a speed-up of roughly $7.0$ for $n=10^9$.
+A problem that this speedup did not show up for $p=16$ as high may have been, that there were quite some other processes running in the background using up some of the capacities of the 16 processors.
 
+
+\section{Extensions and Applications}
+
+\subsection{Twin Primes}
+
+A twin prime is a pair of primes that differ only by two.
+Examples of such twin primes are $4\pm1, 6\pm1, 12\pm1$.
+It is not yet known, whether there are infinitely many twin primes, although some efforts have already been made.
+For example, Yitang Zhuang showed in 2014, that there are infinitely many pairs $(p_i, p_{i+1})$ of primes with $p_{i+1} - p_i < 7\cdot 10^7$.
+We want compute twin primes in a parallel algorithm extending the parallel Sieve of Eratosthenes.
+
+The resulting program can be seen in \autoref{prg:twin-primes}. It has as input a distributed list of primes according to the block distribution and returns all twin primes up to $n$.
+
+This program works as follows:
+As we know, that the  primes lists in each processor are sorted,
+we can just iterate through these lists and check if consecutive primes have distance $2$.
+This works for all twin primes except these that live in two different processors.
+A workaround for finding also these divided twins is, to make every processor tell the consecutive processor the largest prime of himself.
+Then the processor can first check whether this previous prime is twin with the first prime of the processor.
+
+We analyse the BSP cost of this subprogram:
+We assume that assignments can be ignored.
+Then for the first superstep there is only one comparison which counts as BSP cost.
+The next superstep is a simple 1-relation with a cost of $6+g$.
+The last superstep involves the actual computation.
+With the approximation $n/\ln n$ for the number of primes smaller or equal to $n$, we may assume, that the number of primes in the first block are maximal.
+Hence we can bound the number of computations in the last superstep by approximately $6\cdot (n/p) / \ln(n/p)$.
+Summing the BSP cost can be estimated by
+\[
+	7 + 6\cdot\frac{n}{p\ln(n/p)} + g + 3l.
+\]
+
+Running this algorithm with $n=200$ generates the following twin primes:
+\begin{align*}
+4\pm1,
+6\pm1,
+12\pm1,
+18\pm1, 
+30\pm1, 
+42\pm1, 
+60\pm1, 
+72\pm1,\\
+102\pm1,
+108\pm1,
+138\pm1,
+150\pm1,
+180\pm1,
+192\pm1,
+198\pm1.
+\end{align*}
+%A fundamental theorem with regards to twin primes is Brun's Theorem:
+%\begin{theorem}
+%	\cite[Theorem~6.33]{LeVeque2014}
+%	The series of reciprocals of twin primes either is a finite sum or forms a convergent series:
+%	\[
+%	\left(\frac{1}{3} + \frac{1}{5}\right) + \left(\frac{1}{5} + \frac{1}{7}\right) + \cdots < \infty.
+%	\]
+%	In fact, if $\pi_2(x)$ is the number of such pairs not exceeding $x$, then
+%	$\pi_2(x) = \bigO(\frac{x(\log\log x)^2}{\log^2 x})$.
+%\end{theorem}
+
+
+\subsection{Goldbach Conjecture}
+
+We want to discuss another number theoretic question, that the mathematician Christian Goldbach asked in the 18th century:
+Is every even number $k > 2$ the sum of two prime numbers?
+The so-called Goldbach conjecture suggests, that the answer to this question is yes.
+We want to check this conjecture up until a large number $k$ by the means of a parallel program.
+
+We again extend the functionality of the parallel Sieve of Eratosthenes.
+Similar to the actual sieve, we use a boolean array distributed blockwise which should have value $\mathbf{true}$ for an index $k$, if the algorithm has found two primes summing to $k$ and therefore crossed out $k$.
+
+The problem here is, that some processor $s$ has to know all primes of the previous processors in order to check any possible combination of two prime numbers.
+This exchange is made possible by first exchanging the number of primes in the individual blocks and then reserving a large enough array to hold all of the necessary primes.
+
+Defining an array length $L\coloneqq \ceil{n/p}$ a processor $s\in\{0, \dots, p\}$ takes care of all even numbers in $[s\cdot L, (s+1)\cdot L)$.
+As the sums of primes of processors $i$ and $j$ are contained within $[(i+j)\cdot L, (i+j+2)\cdot L)$, we only need to check combinations of blocks from processors $i$ and $j$ if $i+j=s$ or $i+j+1=s$.
+
+\newcommand{\low}{\texttt{low}}\newcommand{\high}{\texttt{high}}
+One possibility to systematically obtain all these combinations is to first initialise two variables $\low$ and $\high$ with the value $\floor{s / 2}$.
+We will now gradually increase $\high$ up to $s$ and decrease $\low$ while making sure not to skip any combination.
+After processing the pair $(\low, \high)$ we update these variable in the following manner:
+If $\low + \high + 1 = s$, we will increment $\high$ such that after this update we have $\low + \high = s$.
+If on the other hand $\low + \high = s$ is satisfied, we will decrement $\low$, such that thereafter $\low + \high + 1 = s$ holds.
+Doing this until either $\low$ is smaller than $0$ or $\high$ is greater than $s$, we processed every such pair.
+
+\autoref{prg:twin-primes} implements the above procedure.
+It processes one such pair $(\low, \high)$ by first transferring another processor's block of primes to the local memory, if it has not been loaded yet.
+Again, this is done by checking if $\low + \high + 1 = s$: If this is the case, we have just decremented $\low$ and hence we want to load the primes of processor $\low$.
+Otherwise we want to load the ones of processor $\high$ analogously, except if $\high = s$ holds.
+
+Let us also discuss the BSP cost of this extension program:
+The first superstep where only variables are initialized is negligible.
+In the second superstep, the exchange of the numbers of the primes introduces a cost of $p\cdot g$.
+In the next superstep, the array for the exchange of primes is prepared, where all primes of the current processor are copied into.
+Similar to the last section, we may assume that the first processor has the most primes, namely approximately $(n/p)/\ln(n/p)$.
+Also the \texttt{crosses} array is initialised which needs $n/(2p)$ operations.
+Hence the cost of this superstep is bounded by $(n/p) / \ln(n/p) + n/(2p)$ computation operations.
+
+Now, we get to the main loop, which has exactly $p$ iterations.
+This is, because processor $p-1$ has the most combinations of blocks of primes to check and for $p-1$ it takes exactly $p$ steps to get from $\low=\high=\floor{(p-1)/2}$ to either $\low = -1$ or $\high = s+1$, because in each step alternately either $\high$ is increased or $\low$ is decreased by one.
+
+In the first superstep of the loop there is a single $\texttt{bsp}\_\texttt{get}$ for getting the requested block of primes,
+which introduces a cost of $(n/p)/\ln(n/p) \cdot g$.
+The subsequent superstep is the most expensive one:
+Here we go trough (almost) all possibilities taking one prime from the block of $\low$ and one from the block of $\high$ and crossing out the number if it falls into the correct block.
+This has at worst a cost of \[
+\left(\frac{n/p}{\ln(n/p)}\right)^2 = \frac{n^2}{p^2 \ln(n/p)^2}.\]
+For checking if the conjecture holds, we need another $n/p$ steps.
+Hence the overall accumulated BSP cost is bounded by
+\[
+	\frac{n}{p \ln(n/p)} + \frac{n}{2p} + \frac{n^2}{p \ln(n/p)^2} + \left( p + \frac{n}{\ln(n/p)} \right)\cdot g + (3+p)\cdot l.
+\]
+
+
+
+Using this program, the Goldbach conjecture was successfully checked for all even numbers smaller or equal to $10.000.000$.
 
 \pagebreak
 \appendix
@@ -808,7 +931,7 @@ void bsp_sieve_optimised() {
   primes.reserve(n / log(n)); // n/ln(n) is average number of primes <= n
   if (s == 0) primes.push_back(2);
   for (long j = 0; j < arrayLength; j++) {
-    if (!crosses[j] && blockStart + 2 * j <= n) // We might have few numbers >n
+    if (!crosses[j] && blockStart + 2 * j <= n)
       primes.push_back(blockStart + 2 * j);
   }
   delete[] crosses;
@@ -848,7 +971,7 @@ void sieve_optimised(long prime, bool * crosses,
 }
 	\end{lstlisting}
 
-	\begin{lstlisting}[caption={Extension function for finding prime twins}, label={prg:par_opt_sieve}, frame={single}]
+	\begin{lstlisting}[caption={Extension function for finding twin primes}, label={prg:twin-primes}, frame={single}]
 #include <bsp.hpp>
 #include <vector>
 
@@ -866,10 +989,8 @@ std::vector<long> bsp_twins(std::vector<long> primes) {
   bsp_sync();
 
   std::vector<long> twins;
-  if (primes.size() == 0)
-    return twins;
 
-  if (prevPrime + 2 == primes[0])
+  if (primes.size() > 0 && prevPrime + 2 == primes[0])
     twins.push_back(prevPrime + 1);
   for (long i = 0; i < primes.size() - 1; i++) {
     if (primes[i] + 2 == primes[i + 1])
@@ -883,7 +1004,7 @@ std::vector<long> bsp_twins(std::vector<long> primes) {
 	\end{lstlisting}
 	
 \pagebreak
-	\begin{lstlisting}[caption={Extension function for checking the Goldbach conjecture}, label={prg:par_opt_sieve}, frame={single}]
+	\begin{lstlisting}[caption={Extension function for checking the Goldbach conjecture}, label={prg:goldbach}, frame={single}]
 #include <bsp.hpp>
 #include <cstdio>
 #include <cstring>
