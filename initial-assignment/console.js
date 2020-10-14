@@ -23,7 +23,7 @@ const meansAndDeviations = objectMap(procNData, pdata => objectMap(pdata, iterat
   return { mean, relDeviation }
 }))
 
-const latexData = objectMap(meanAndDeviationObj2, pdata => {
+const latexData = objectMap(meansAndDeviations, pdata => {
   const means = Object.keys(pdata).reduce((acc, n) => acc += `(${n}, ${pdata[n].mean})
 `, '')
   const relDeviations = Object.keys(pdata).reduce((acc, n) => acc += `(${n}, ${pdata[n].relDeviation})
